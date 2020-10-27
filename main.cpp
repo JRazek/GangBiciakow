@@ -10,6 +10,7 @@ struct Connection{
     int toyType;
     int ID;
     Leaf * parent;
+    Leaf * child;
     Connection(Leaf * l1, Leaf * l2, int streetID, int toyType){
         this->l1 = l1;
         this->l2 = l2;
@@ -17,8 +18,10 @@ struct Connection{
         this->toyType = toyType;
     }
     void setParent(Leaf * parent){//if true - the l1 else the l2
-        if(l1 == parent || l2 == parent)
+        if(l1 == parent || l2 == parent) {
             this->parent = parent;
+            this->child = l1 == parent ? l2 : l1;
+        }
         else
             cout<<"ERROR";
     }
@@ -69,23 +72,33 @@ void propagateParent(Leaf * root){
 }
 
 void countOccurrencesFromTown(Leaf * targetTown){
-    Connection * parentPath = targetTown->parentPath;
-    //Leaf * parent = parentPath->parent;
-    //rewrite this function
     int totalOccurrencesOfToys [targetTown->typesOfToys];
+    stack<Connection *> queue;
     for(int i = 0; i < targetTown->typesOfToys; i ++){
         totalOccurrencesOfToys[i] = 0;
-    }//set all to 0
-    while (parentPath->parent->parentPath != nullptr){
-        if(parentPath->parent->memoizationTable != nullptr){
-            for(int i = 0; i < targetTown->typesOfToys; i ++){
-                totalOccurrencesOfToys[i] += parentPath->parent->memoizationTable[i];
-            }
-        }
-        parentPath = parentPath->parent->parentPath;
-        totalOccurrencesOfToys[parentPath->toyType] ++;
-        parentPath->parent->memoizationTable = totalOccurrencesOfToys;
     }
+    if(targetTown->parentPath == nullptr) {
+        targetTown->memoizationTable = totalOccurrencesOfToys;
+        return;
+    }
+    Connection * currConnection = targetTown->parentPath;
+    while (currConnection->parent->parentPath != nullptr){
+        if(currConnection->parent->memoizationTable != nullptr){
+            for(int i = 0; i < currConnection->parent->typesOfToys; i ++){
+                totalOccurrencesOfToys[i] += currConnection->parent->memoizationTable[i];
+            }
+            return;
+        }
+        queue.push(currConnection);
+        currConnection = currConnection->parent->parentPath;
+    }
+    while (!queue.empty()){
+        Connection * conn = queue.top();
+        queue.pop();
+        conn->parent->memoizationTable = totalOccurrencesOfToys;
+        totalOccurrencesOfToys[conn->toyType] += 1;
+    }
+
 }
 
 int main() {
@@ -121,12 +134,12 @@ int main() {
         if(requestType == 'Z'){
             Leaf * targetTown = towns[stoi(args[1]) - 1];
             countOccurrencesFromTown(targetTown);
-            int count = 0;
-            for(int i = 0; i < kindsOfToys; i ++){
-                if(targetTown->memoizationTable[i] != 0)
-                    count ++;
+            int different = 0;
+            for(int j = 0; j < kindsOfToys; j ++){
+                if(targetTown->memoizationTable[j] > 0)
+                    different ++;
             }
-            cout<<count<<"\n";
+            cout<<different<<"\n";
         }
         else if(requestType == 'B'){
 
