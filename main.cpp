@@ -23,6 +23,7 @@ struct Leaf{
     Connection * parentPath;
     vector<Connection *> connections;//all children after propagating the root
     int id;
+    vector<int> memoizationTable;//each index stands for amount of toys of specific type
     void setParent(Connection * parentPath){
         this->parentPath = parentPath;
     }
@@ -59,6 +60,8 @@ void propagateParent(Leaf * root){
         }
     }
 }
+
+
 int main() {
     string line;
     getline(cin, line);
@@ -84,5 +87,17 @@ int main() {
     }
     Leaf * rootTown = towns[0];
     propagateParent(rootTown);
+    for(int i = 0; i < requests; i ++){
+        getline(cin, line);
+        vector<string> args = split(line, ' ');
+        char requestType = args[0][0];//first argument and the first char in the string
+        if(requestType == 'Z'){
+            Leaf * targetTown = towns[stoi(args[1])];
+
+        }
+        else if(requestType == 'B'){
+
+        }
+    }
     return 0;
 }
