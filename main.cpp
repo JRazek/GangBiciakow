@@ -10,21 +10,29 @@ struct Connection{
     int toyType;
     int ID;
     Leaf * parent;
-    Connection(Leaf * l1, Leaf * l2, int streetID){
+    Connection(Leaf * l1, Leaf * l2, int streetID, int toyType){
         this->l1 = l1;
         this->l2 = l2;
         this->ID = streetID;
+        this->toyType = toyType;
     }
-    void setParent(bool first){//if true - the l1 else the l2
-        parent = first ? l1 : l2;
+    void setParent(Leaf * parent){//if true - the l1 else the l2
+        if(l1 == parent || l2 == parent)
+            this->parent = parent;
+        else
+            cout<<"ERROR";
     }
 };
 struct Leaf{
     Connection * parentPath;
     vector<Connection *> connections;//all children after propagating the root
     int id;
-    vector<int> memoizationTable;//each index stands for amount of toys of specific type
-    void setParent(Connection * parentPath){
+    int * memoizationTable = nullptr;//each index stands for amount of toys of specific type
+    int typesOfToys;
+    Leaf(int typesOfToys){
+        this->typesOfToys = typesOfToys;
+    }
+    void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
     }
 };
@@ -51,16 +59,34 @@ void propagateParent(Leaf * root){
         for(int i = 0 ; i < subject->connections.size(); i ++){
             Connection * c = subject->connections.at(i);
             if(c != subject->parentPath) {
-                bool first = !(c->l1 == subject) ? 1 : 0;
-                Leaf *another = first ? c->l1 : c->l2;
-                c->setParent(first);
-                another->setParent(c);
+                Leaf * another = !(c->l1 == subject) ? c->l1 : c->l2;
+                c->setParent(subject);
+                another->setParentPath(c);
                 queue.push(another);
             }
         }
     }
 }
 
+void countOccurrencesFromTown(Leaf * targetTown){
+    Connection * parentPath = targetTown->parentPath;
+    //Leaf * parent = parentPath->parent;
+    //rewrite this function
+    int totalOccurrencesOfToys [targetTown->typesOfToys];
+    for(int i = 0; i < targetTown->typesOfToys; i ++){
+        totalOccurrencesOfToys[i] = 0;
+    }//set all to 0
+    while (parentPath->parent->parentPath != nullptr){
+        if(parentPath->parent->memoizationTable != nullptr){
+            for(int i = 0; i < targetTown->typesOfToys; i ++){
+                totalOccurrencesOfToys[i] += parentPath->parent->memoizationTable[i];
+            }
+        }
+        parentPath = parentPath->parent->parentPath;
+        totalOccurrencesOfToys[parentPath->toyType] ++;
+        parentPath->parent->memoizationTable = totalOccurrencesOfToys;
+    }
+}
 
 int main() {
     string line;
@@ -71,7 +97,7 @@ int main() {
     int requests = stoi(args[2]);
     vector <Leaf * > towns;
     for(int i = 0 ; i < townsCount; i ++){
-        Leaf * town = new Leaf();
+        Leaf * town = new Leaf(kindsOfToys);
         town->id = i;
         towns.push_back(town);
     }
@@ -81,19 +107,26 @@ int main() {
         Leaf * town1 = towns[stoi(args[0]) - 1];
         Leaf * town2 = towns[stoi(args[1]) - 1];
         int toyType = stoi(args[2]) - 1;
-        Connection * conn = new Connection(town1, town2, i);
+        Connection * conn = new Connection(town1, town2, i, toyType);
         town1->connections.push_back(conn);
         town2->connections.push_back(conn);
     }
     Leaf * rootTown = towns[0];
+    rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
     for(int i = 0; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
         char requestType = args[0][0];//first argument and the first char in the string
         if(requestType == 'Z'){
-            Leaf * targetTown = towns[stoi(args[1])];
-
+            Leaf * targetTown = towns[stoi(args[1]) - 1];
+            countOccurrencesFromTown(targetTown);
+            int count = 0;
+            for(int i = 0; i < kindsOfToys; i ++){
+                if(targetTown->memoizationTable[i] != 0)
+                    count ++;
+            }
+            cout<<count<<"\n";
         }
         else if(requestType == 'B'){
 
