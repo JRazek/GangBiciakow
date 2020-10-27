@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include <stack>
 #include <vector>
 using namespace std;
 struct Leaf;
@@ -11,9 +11,9 @@ struct Connection{
     int ID;
     Leaf * parent;
     Connection(Leaf * l1, Leaf * l2, int streetID){
-        l1 = l1;
-        l2 = l2;
-        ID = streetID;
+        this->l1 = l1;
+        this->l2 = l2;
+        this->ID = streetID;
     }
     void setParent(bool first){//if true - the l1 else the l2
         parent = first ? l1 : l2;
@@ -21,8 +21,11 @@ struct Connection{
 };
 struct Leaf{
     Connection * parentPath;
-    vector<Connection *> childPaths;
+    vector<Connection *> connections;//all children after propagating the root
     int id;
+    void setParent(Connection * parentPath){
+        this->parentPath = parentPath;
+    }
 };
 
 vector<string> split(string str, char divider){
@@ -38,7 +41,24 @@ vector<string> split(string str, char divider){
     }
     return result;
 }
-
+void propagateParent(Leaf * root){
+    stack<Leaf *> queue;
+    queue.push(root);
+    while (!queue.empty()){
+        Leaf * subject = queue.top();
+        queue.pop();
+        for(int i = 0 ; i < subject->connections.size(); i ++){
+            Connection * c = subject->connections.at(i);
+            if(c != subject->parentPath) {
+                bool first = !(c->l1 == subject) ? 1 : 0;
+                Leaf *another = first ? c->l1 : c->l2;
+                c->setParent(first);
+                another->setParent(c);
+                queue.push(another);
+            }
+        }
+    }
+}
 int main() {
     string line;
     getline(cin, line);
@@ -54,10 +74,15 @@ int main() {
     }
     for(int i = 0 ; i < townsCount - 1; i ++){
         getline(cin, line);
-        Leaf * town1 = towns[stoi(args[0])];
-        Leaf * town2 = towns[stoi(args[1])];
-        int toyType = stoi(args[2]);
+        args = split(line, ' ');
+        Leaf * town1 = towns[stoi(args[0]) - 1];
+        Leaf * town2 = towns[stoi(args[1]) - 1];
+        int toyType = stoi(args[2]) - 1;
         Connection * conn = new Connection(town1, town2, i);
+        town1->connections.push_back(conn);
+        town2->connections.push_back(conn);
     }
+    Leaf * rootTown = towns[0];
+    propagateParent(rootTown);
     return 0;
 }
