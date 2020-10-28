@@ -83,8 +83,8 @@ void countOccurrencesFromTown(Leaf * targetTown){
     while(currParentPath != nullptr){
         queue.push(currParentPath);
         if(currParentPath->parent->memoizationTable != nullptr){
-            //totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
-            //break;
+            totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
+            break;
             //to test
         }
         currParentPath = currParentPath->parent->parentPath;
