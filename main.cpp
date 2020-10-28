@@ -82,8 +82,10 @@ void countOccurrencesFromTown(Leaf * targetTown){
     //making the path O(n)
     while(currParentPath != nullptr){
         if(currParentPath->parent->memoizationTable != nullptr){
+            delete (totalOccurrencesOfToys);
             totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
             break;
+            //heres the issue
         }
         queue.push(currParentPath);
         currParentPath = currParentPath->parent->parentPath;
@@ -92,26 +94,25 @@ void countOccurrencesFromTown(Leaf * targetTown){
     while (!queue.empty()){
         Connection * currConn = queue.top();
         queue.pop();
-
-        totalOccurrencesOfToys[currConn->toyType] ++;
         currConn->child->memoizationTable = totalOccurrencesOfToys;
+        totalOccurrencesOfToys[currConn->toyType] ++;
     }
 }
 
-void updateSubTree(Leaf * root, int oldToyType, int newToyType){
-    stack<Leaf *> queue;
-    root->parentPath->toyType = newToyType;
-    queue.push(root);
+void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
+    stack<Connection *> queue;
+    rootConnection->toyType = newToyType;
+    queue.push(rootConnection);
     while (!queue.empty()){
-        Leaf * subject = queue.top();
+        Connection * subject = queue.top();
         queue.pop();
-        if(subject->memoizationTable != nullptr) {
-            subject->memoizationTable[oldToyType]--;
-            subject->memoizationTable[newToyType]++;
-            for (int i = 0; i < subject->connections.size(); i++) {
-                Connection *c = subject->connections.at(i);
-                if (c != subject->parentPath) {
-                    queue.push(c->child);
+        if(subject->child->memoizationTable != nullptr){
+            //or here
+            subject->child->memoizationTable[oldToyType] --;
+            subject->child->memoizationTable[newToyType] ++;
+            for(int i = 0; i < subject->child->connections.size(); i ++){
+                if(subject->child->connections.at(i) != subject->child->parentPath){
+                    queue.push(subject->child->connections.at(i));
                 }
             }
         }
@@ -168,7 +169,7 @@ int main() {
             int newToy = stoi(args[2]) - 1;
             int oldToy = targetStreet->toyType;
             if(oldToy != newToy){
-                updateSubTree(targetStreet->child, oldToy, newToy);
+                updateSubTree(targetStreet, oldToy, newToy);
             }
         }
     }
