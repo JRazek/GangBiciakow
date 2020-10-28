@@ -30,7 +30,8 @@ struct Leaf{
     Connection * parentPath;
     vector<Connection *> connections;//all children after propagating the root
     int id;
-    int * memoizationTable = nullptr;//each index stands for amount of toys of specific type
+    vector<int> memoizationTable;
+    bool isMemoSet = false;
     int typesOfToys;
     Leaf(int typesOfToys){
         this->typesOfToys = typesOfToys;
@@ -72,30 +73,28 @@ void propagateParent(Leaf * root){
 }
 
 void countOccurrencesFromTown(Leaf * targetTown){
-    int * totalOccurrencesOfToys = new int[targetTown->typesOfToys];
-    stack<Connection *> queue;
-    Connection * currParentPath = targetTown->parentPath;
-
+    vector<int> totalOccurrencesOfToys(targetTown->typesOfToys);
+    fill(totalOccurrencesOfToys.begin(), totalOccurrencesOfToys.end(), 0);
     for(int i = 0; i < targetTown->typesOfToys; i ++){
         totalOccurrencesOfToys[i] = 0;
     }
-    //making the path O(n)
-    while(currParentPath != nullptr){
-        if(currParentPath->parent->memoizationTable != nullptr){
-            delete (totalOccurrencesOfToys);
+    stack<Connection *> queue;
+    Connection * currParentPath = targetTown->parentPath;
+    queue.push(currParentPath);
+    while(currParentPath->parent->parentPath != nullptr){
+        currParentPath = currParentPath->parent->parentPath;
+        queue.push(currParentPath);
+        if(currParentPath->parent->isMemoSet){
             totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
             break;
-            //heres the issue
         }
-        queue.push(currParentPath);
-        currParentPath = currParentPath->parent->parentPath;
     }
-
     while (!queue.empty()){
-        Connection * currConn = queue.top();
+        Connection * consideredConnection = queue.top();
         queue.pop();
-        currConn->child->memoizationTable = totalOccurrencesOfToys;
-        totalOccurrencesOfToys[currConn->toyType] ++;
+        totalOccurrencesOfToys[consideredConnection->toyType] ++;
+        consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
+        consideredConnection->child->isMemoSet = true;
     }
 }
 
@@ -106,7 +105,7 @@ void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
     while (!queue.empty()){
         Connection * subject = queue.top();
         queue.pop();
-        if(subject->child->memoizationTable != nullptr){
+        if(subject->child->isMemoSet){
             //or here
             subject->child->memoizationTable[oldToyType] --;
             subject->child->memoizationTable[newToyType] ++;
