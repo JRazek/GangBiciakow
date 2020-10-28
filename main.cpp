@@ -76,16 +76,21 @@ void countOccurrencesFromTown(Leaf * targetTown){
     stack<Connection *> queue;
     Connection * currParentPath = targetTown->parentPath;
 
+    for(int i = 0; i < targetTown->typesOfToys; i ++){
+        totalOccurrencesOfToys[i] = 0;
+    }
     //making the path O(n)
     while(currParentPath != nullptr){
         queue.push(currParentPath);
+        if(currParentPath->parent->memoizationTable != nullptr){
+            //totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
+            //break;
+            //to test
+        }
         currParentPath = currParentPath->parent->parentPath;
     }
 
 
-    for(int i = 0; i < targetTown->typesOfToys; i ++){
-        totalOccurrencesOfToys[i] = 0;
-    }
     while (!queue.empty()){
         Connection * currConn = queue.top();
         totalOccurrencesOfToys[currConn->toyType] ++;
@@ -94,11 +99,30 @@ void countOccurrencesFromTown(Leaf * targetTown){
     }
 }
 
-void updateSubTree(Leaf * root){
-
+void updateSubTree(Leaf * root, int oldToyType, int newToyType){
+    stack<Leaf *> queue;
+    root->parentPath->toyType = newToyType;
+    queue.push(root);
+    while (!queue.empty()){
+        Leaf * subject = queue.top();
+        queue.pop();
+        if(subject->memoizationTable != nullptr) {
+            subject->memoizationTable[oldToyType]--;
+            subject->memoizationTable[newToyType]++;
+            for (int i = 0; i < subject->connections.size(); i++) {
+                Connection *c = subject->connections.at(i);
+                if (c != subject->parentPath) {
+                    queue.push(c->child);
+                }
+            }
+        }
+    }
 }
 
 int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+
     string line;
     getline(cin, line);
     vector<string> args = split(line, ' ');
@@ -142,10 +166,10 @@ int main() {
         }
         else if(requestType == 'B'){
             Connection * targetStreet = streets[stoi(args[1]) - 1];
-            int nextToy = stoi(args[2]) - 1;
-            if(targetStreet->toyType != nextToy){
-                targetStreet->toyType = nextToy;
-                //propagate Error
+            int newToy = stoi(args[2]) - 1;
+            int oldToy = targetStreet->toyType;
+            if(oldToy != newToy){
+                updateSubTree(targetStreet->child, oldToy, newToy);
             }
         }
     }
