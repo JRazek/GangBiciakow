@@ -72,32 +72,29 @@ void propagateParent(Leaf * root){
 }
 
 void countOccurrencesFromTown(Leaf * targetTown){
-    int totalOccurrencesOfToys [targetTown->typesOfToys];
+    int * totalOccurrencesOfToys = new int[targetTown->typesOfToys];
     stack<Connection *> queue;
+    Connection * currParentPath = targetTown->parentPath;
+
+    //making the path O(n)
+    while(currParentPath != nullptr){
+        queue.push(currParentPath);
+        currParentPath = currParentPath->parent->parentPath;
+    }
+
+
     for(int i = 0; i < targetTown->typesOfToys; i ++){
         totalOccurrencesOfToys[i] = 0;
     }
-    if(targetTown->parentPath == nullptr) {
-        targetTown->memoizationTable = totalOccurrencesOfToys;
-        return;
-    }
-    Connection * currConnection = targetTown->parentPath;
-    while (currConnection->parent->parentPath != nullptr){
-        if(currConnection->parent->memoizationTable != nullptr){
-            for(int i = 0; i < currConnection->parent->typesOfToys; i ++){
-                totalOccurrencesOfToys[i] += currConnection->parent->memoizationTable[i];
-            }
-            return;
-        }
-        queue.push(currConnection);
-        currConnection = currConnection->parent->parentPath;
-    }
     while (!queue.empty()){
-        Connection * conn = queue.top();
+        Connection * currConn = queue.top();
+        totalOccurrencesOfToys[currConn->toyType] ++;
+        currConn->child->memoizationTable = totalOccurrencesOfToys;
         queue.pop();
-        conn->parent->memoizationTable = totalOccurrencesOfToys;
-        totalOccurrencesOfToys[conn->toyType] += 1;
     }
+}
+
+void updateSubTree(Leaf * root){
 
 }
 
@@ -109,6 +106,7 @@ int main() {
     int kindsOfToys = stoi(args[1]);
     int requests = stoi(args[2]);
     vector <Leaf * > towns;
+    vector <Connection * > streets;
     for(int i = 0 ; i < townsCount; i ++){
         Leaf * town = new Leaf(kindsOfToys);
         town->id = i;
@@ -123,6 +121,7 @@ int main() {
         Connection * conn = new Connection(town1, town2, i, toyType);
         town1->connections.push_back(conn);
         town2->connections.push_back(conn);
+        streets.push_back(conn);
     }
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
@@ -142,7 +141,12 @@ int main() {
             cout<<different<<"\n";
         }
         else if(requestType == 'B'){
-
+            Connection * targetStreet = streets[stoi(args[1]) - 1];
+            int nextToy = stoi(args[2]) - 1;
+            if(targetStreet->toyType != nextToy){
+                targetStreet->toyType = nextToy;
+                //propagate Error
+            }
         }
     }
     return 0;
