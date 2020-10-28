@@ -81,21 +81,20 @@ void countOccurrencesFromTown(Leaf * targetTown){
     }
     //making the path O(n)
     while(currParentPath != nullptr){
-        queue.push(currParentPath);
         if(currParentPath->parent->memoizationTable != nullptr){
             totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
             break;
-            //to test
         }
+        queue.push(currParentPath);
         currParentPath = currParentPath->parent->parentPath;
     }
 
-
     while (!queue.empty()){
         Connection * currConn = queue.top();
+        queue.pop();
+
         totalOccurrencesOfToys[currConn->toyType] ++;
         currConn->child->memoizationTable = totalOccurrencesOfToys;
-        queue.pop();
     }
 }
 
