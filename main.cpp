@@ -106,7 +106,6 @@ void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
         Connection * subject = queue.top();
         queue.pop();
         if(subject->child->isMemoSet){
-            //or here
             subject->child->memoizationTable[oldToyType] --;
             subject->child->memoizationTable[newToyType] ++;
             for(int i = 0; i < subject->child->connections.size(); i ++){
