@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stack>
+#include <map>
 #include <vector>
 using namespace std;
 struct Leaf;
@@ -30,8 +31,7 @@ struct Leaf{
     Connection * parentPath;
     vector<Connection *> connections;//all children after propagating the root
     int id;
-    vector<int> memoizationTable;
-    bool isMemoSet = false;
+    map<int, int> memoizationTable;
     int typesOfToys;
     Leaf(int typesOfToys){
         this->typesOfToys = typesOfToys;
@@ -73,18 +73,15 @@ void propagateParent(Leaf * root){
 }
 
 void countOccurrencesFromTown(Leaf * targetTown){
-    vector<int> totalOccurrencesOfToys(targetTown->typesOfToys);
-    fill(totalOccurrencesOfToys.begin(), totalOccurrencesOfToys.end(), 0);
-    for(int i = 0; i < targetTown->typesOfToys; i ++){
-        totalOccurrencesOfToys[i] = 0;
-    }
+    map<int,int> totalOccurrencesOfToys;
+
     stack<Connection *> queue;
     Connection * currParentPath = targetTown->parentPath;
     queue.push(currParentPath);
     while(currParentPath->parent->parentPath != nullptr){
         currParentPath = currParentPath->parent->parentPath;
         queue.push(currParentPath);
-        if(currParentPath->parent->isMemoSet){
+        if(currParentPath->parent->memoizationTable.size() > 0){
             totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
             break;
         }
@@ -92,9 +89,12 @@ void countOccurrencesFromTown(Leaf * targetTown){
     while (!queue.empty()){
         Connection * consideredConnection = queue.top();
         queue.pop();
-        totalOccurrencesOfToys[consideredConnection->toyType] ++;
+        int toyType = consideredConnection->toyType;
+        if(totalOccurrencesOfToys.find(toyType) == totalOccurrencesOfToys.end()){
+            totalOccurrencesOfToys[toyType] = 0;
+        }
+        totalOccurrencesOfToys[toyType] ++;
         consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
-        consideredConnection->child->isMemoSet = true;
     }
 }
 
@@ -105,8 +105,11 @@ void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
     while (!queue.empty()){
         Connection * subject = queue.top();
         queue.pop();
-        if(subject->child->isMemoSet){
+        if(subject->child->memoizationTable.size() > 0){
             subject->child->memoizationTable[oldToyType] --;
+            if(subject->child->memoizationTable[oldToyType] == 0){
+                subject->child->memoizationTable.erase(oldToyType);
+            }
             subject->child->memoizationTable[newToyType] ++;
             for(int i = 0; i < subject->child->connections.size(); i ++){
                 if(subject->child->connections.at(i) != subject->child->parentPath){
@@ -117,6 +120,7 @@ void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
     }
 }
 
+//problem is accessing m*z times each toy, even if equal to 0.
 int main() {
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(NULL);
@@ -156,9 +160,9 @@ int main() {
             Leaf * targetTown = towns[stoi(args[1]) - 1];
             countOccurrencesFromTown(targetTown);
             int different = 0;
-            for(int j = 0; j < kindsOfToys; j ++){
-                if(targetTown->memoizationTable[j] > 0)
-                    different ++;
+            map<int,int> table = targetTown->memoizationTable;
+            for (std::map<int,int>::iterator it=table.begin(); it!=table.end(); ++it){
+                different ++;
             }
             cout<<different<<"\n";
         }
