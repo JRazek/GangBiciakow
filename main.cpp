@@ -94,7 +94,8 @@ void countOccurrencesFromTown(Leaf * targetTown){
             totalOccurrencesOfToys[toyType] = 0;
         }
         totalOccurrencesOfToys[toyType] ++;
-        consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
+        if(queue.size() == 1)
+            consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
     }
 }
 
@@ -161,9 +162,11 @@ int main() {
             countOccurrencesFromTown(targetTown);
             int different = 0;
             map<int,int> table = targetTown->memoizationTable;
+
             for (std::map<int,int>::iterator it=table.begin(); it!=table.end(); ++it){
                 different ++;
             }
+           // cout<<requests - i<<"\n";
             cout<<different<<"\n";
         }
         else if(requestType == 'B'){
