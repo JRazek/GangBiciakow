@@ -3,6 +3,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <map>
+
 using namespace std;
 struct Leaf;
 
@@ -97,11 +99,27 @@ void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, Leaf
     }
 }
 vector<Leaf *> getChangeList(Leaf * changeRoot, int changeQuery){
+    vector<Leaf *> subTreeNodes;
 
-}
-
-void countOccurrences(Leaf * startNode, int currentChangeQuery){
-    
+    vector<Leaf *> affectedNodes;
+    stack<Leaf *> queue;
+    queue.push(changeRoot);
+    while(!queue.empty()) {
+        Leaf * subject = queue.top();
+        subTreeNodes.push_back(subject);
+        queue.pop();
+        for (auto node : subject->directMarkedChildren){
+            queue.push(node);
+        }
+    }
+    /*
+    for(auto node : subTreeNodes){
+        bool isPresent = node->changeQueries.find(changeQuery) != node->changeQueries.end();
+        if(isPresent){
+            affectedNodes.push_back(node);
+        }
+    }*/
+    return affectedNodes;
 }
 
 int main() {
@@ -150,20 +168,29 @@ int main() {
         if(!typeOfQuery){
             int newToy = stoi(args[2]) - 1;
             int targetStreetID = stoi(args[1]) - 1;
-            if(!streets.at(targetStreetID)->toyType == newToy){
-                streets.at(targetStreetID)->child->changeQueries.insert(changeQuery);
-                queries.push_back(make_tuple(typeOfQuery, targetStreetID, newToy));
-            }
+            streets.at(targetStreetID)->child->changeQueries.insert(changeQuery);
+            queries.push_back(make_tuple(typeOfQuery, targetStreetID, newToy));
             changeQuery ++;
         }
     }
-
     vector<Leaf *> tourOrder;
     int * tmp = new int(0);
     eulerTourIndexing(rootTown, tmp, tourOrder, nullptr);
     cout<<*tmp;
     delete(tmp);
 
+    unordered_map<int, vector<Leaf *>> impactedByCertainQuery;
+
+    int currQuery = 0;
+    for(int i = 0; i < queries.size(); i ++){
+        bool requestType = get<0>(queries.at(i));
+        if(!requestType){
+            Connection * targetStreet = streets[get<1>(queries.at(i))];
+            int newToy = get<2>(queries.at(i));
+            Leaf * changeRoot = targetStreet->child;//only below the street are affected
+            impactedByCertainQuery[currQuery] = getChangeList(changeRoot, currQuery);
+        }
+    }
 
 /*
     for(int i = 0; i < queries.size(); i ++){
