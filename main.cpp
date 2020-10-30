@@ -83,7 +83,7 @@ void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, Leaf
     if(node->queriesPerformed){
         if(closestQueriedParent != nullptr)
             closestQueriedParent->directMarkedChildren.insert(node);
-        
+
         closestQueriedParent = node;
         //adding closest marked children
     }
@@ -96,6 +96,14 @@ void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, Leaf
         }
     }
 }
+vector<Leaf *> getChangeList(Leaf * changeRoot, int changeQuery){
+
+}
+
+void countOccurrences(Leaf * startNode, int currentChangeQuery){
+    
+}
+
 int main() {
     string line;
     getline(cin, line);
@@ -127,6 +135,7 @@ int main() {
     propagateParent(rootTown);
     //saving the queries for preProcessing of the tree
     vector<tuple<bool, int, int>> queries;
+    int changeQuery = 0;
     for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
@@ -136,14 +145,16 @@ int main() {
             Leaf * targetTown = towns[targetTownID];
             targetTown->queriesPerformed = true;
             queries.push_back(make_tuple(typeOfQuery, targetTownID, 0));
-
+            targetTown->changeQueries.insert(changeQuery);
         }
         if(!typeOfQuery){
             int newToy = stoi(args[2]) - 1;
             int targetStreetID = stoi(args[1]) - 1;
             if(!streets.at(targetStreetID)->toyType == newToy){
+                streets.at(targetStreetID)->child->changeQueries.insert(changeQuery);
                 queries.push_back(make_tuple(typeOfQuery, targetStreetID, newToy));
             }
+            changeQuery ++;
         }
     }
 
