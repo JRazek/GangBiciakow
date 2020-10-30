@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stack>
-#include <map>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 using namespace std;
 struct Leaf;
@@ -32,13 +33,14 @@ struct Leaf{
     vector<Connection *> connections;//all children after propagating the root
     int id;
     int eulerTourID;
-    map<int, int> memoizationTable;
-    int typesOfToys;
-    bool markedToSave = false;
-    vector<Leaf *> firstDegreeMarkedChildren;
-    Leaf(int typesOfToys){
-        this->typesOfToys = typesOfToys;
-    }
+
+
+    unordered_map<int, int> memoizationTable;
+
+    unordered_set<Leaf *> directMarkedChildren;
+    unordered_set<Leaf *> changeQueriesBelonging;
+    unordered_set<int> changeQueries;
+
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
     }
@@ -97,7 +99,7 @@ int main() {
     vector <Leaf * > towns;
     vector <Connection * > streets;
     for(int i = 0 ; i < townsCount; i ++){
-        Leaf * town = new Leaf(kindsOfToys);
+        Leaf * town = new Leaf();
         town->id = i;
         towns.push_back(town);
     }
