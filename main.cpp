@@ -31,8 +31,11 @@ struct Leaf{
     Connection * parentPath;
     vector<Connection *> connections;//all children after propagating the root
     int id;
+    int eulerTourID;
     map<int, int> memoizationTable;
     int typesOfToys;
+    bool markedToSave = false;
+    vector<Leaf *> firstDegreeMarkedChildren;
     Leaf(int typesOfToys){
         this->typesOfToys = typesOfToys;
     }
@@ -94,8 +97,7 @@ void countOccurrencesFromTown(Leaf * targetTown){
             totalOccurrencesOfToys[toyType] = 0;
         }
         totalOccurrencesOfToys[toyType] ++;
-        if(queue.size() == 1)
-            consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
+        consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
     }
 }
 
@@ -120,12 +122,17 @@ void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
         }
     }
 }
-
+void eulerTourIndexing(Leaf * root){
+    stack<Leaf *> queue;
+    queue.push(root);
+    int index = 0;
+    while (!queue.empty()){
+        Leaf * subject = queue.top();
+        
+    }
+}
 //problem is accessing m*z times each toy, even if equal to 0.
 int main() {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(NULL);
-
     string line;
     getline(cin, line);
     vector<string> args = split(line, ' ');
@@ -153,29 +160,41 @@ int main() {
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
-    for(int i = 0; i < requests; i ++){
+
+
+    //saving the queries and marking them with eulers
+    vector<tuple<bool, int, int>> queries;
+    for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
-        char requestType = args[0][0];//first argument and the first char in the string
-        if(requestType == 'Z'){
-            Leaf * targetTown = towns[stoi(args[1]) - 1];
-            countOccurrencesFromTown(targetTown);
-            int different = 0;
-            map<int,int> table = targetTown->memoizationTable;
+        bool typeOfQuery = args[0][0] == 'Z' ? true : false;//first argument and the first char in the string
+        if(typeOfQuery){
+            int targetTownID = stoi(args[1]) - 1;
+            Leaf * targetTown = towns[targetTownID];
+            targetTown->markedToSave = true;
+            queries.push_back(make_tuple(typeOfQuery, targetTownID, 0));
 
-            for (std::map<int,int>::iterator it=table.begin(); it!=table.end(); ++it){
-                different ++;
-            }
-           // cout<<requests - i<<"\n";
-            cout<<different<<"\n";
         }
-        else if(requestType == 'B'){
-            Connection * targetStreet = streets[stoi(args[1]) - 1];
+        if(!typeOfQuery){
             int newToy = stoi(args[2]) - 1;
-            int oldToy = targetStreet->toyType;
-            if(oldToy != newToy){
-                updateSubTree(targetStreet, oldToy, newToy);
+            int targetStreetID = stoi(args[1]) - 1;
+            if(!streets.at(targetStreetID)->toyType == newToy){
+                queries.push_back(make_tuple(typeOfQuery, targetStreetID, newToy));
             }
+        }
+    }
+
+    for(int i = 0; i < queries.size(); i ++){
+        bool requestType = get<0>(queries.at(i));
+        if(requestType){
+            Leaf * targetTown = towns[get<1>(queries.at(i))];
+            //count and mark others
+        }
+        else if(!requestType){
+            Connection * targetStreet = streets[get<1>(queries.at(i))];
+            int newToy = get<2>(queries.at(i));
+            int oldToy = targetStreet->toyType;
+            //update
         }
     }
     return 0;
