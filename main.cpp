@@ -75,61 +75,27 @@ void propagateParent(Leaf * root){
     }
 }
 
-void countOccurrencesFromTown(Leaf * targetTown){
-    map<int,int> totalOccurrencesOfToys;
+vector<Leaf*> * eulerTourIndexing(Leaf * node){
 
-    stack<Connection *> queue;
-    Connection * currParentPath = targetTown->parentPath;
-    queue.push(currParentPath);
-    while(currParentPath->parent->parentPath != nullptr){
-        currParentPath = currParentPath->parent->parentPath;
-        queue.push(currParentPath);
-        if(currParentPath->parent->memoizationTable.size() > 0){
-            totalOccurrencesOfToys = currParentPath->parent->memoizationTable;
-            break;
-        }
-    }
-    while (!queue.empty()){
-        Connection * consideredConnection = queue.top();
-        queue.pop();
-        int toyType = consideredConnection->toyType;
-        if(totalOccurrencesOfToys.find(toyType) == totalOccurrencesOfToys.end()){
-            totalOccurrencesOfToys[toyType] = 0;
-        }
-        totalOccurrencesOfToys[toyType] ++;
-        consideredConnection->child->memoizationTable = totalOccurrencesOfToys;
-    }
-}
-
-void updateSubTree(Connection * rootConnection, int oldToyType, int newToyType){
-    stack<Connection *> queue;
-    rootConnection->toyType = newToyType;
-    queue.push(rootConnection);
-    while (!queue.empty()){
-        Connection * subject = queue.top();
-        queue.pop();
-        if(subject->child->memoizationTable.size() > 0){
-            subject->child->memoizationTable[oldToyType] --;
-            if(subject->child->memoizationTable[oldToyType] == 0){
-                subject->child->memoizationTable.erase(oldToyType);
-            }
-            subject->child->memoizationTable[newToyType] ++;
-            for(int i = 0; i < subject->child->connections.size(); i ++){
-                if(subject->child->connections.at(i) != subject->child->parentPath){
-                    queue.push(subject->child->connections.at(i));
-                }
-            }
-        }
-    }
-}
-void eulerTourIndexing(Leaf * root){
     stack<Leaf *> queue;
-    queue.push(root);
     int index = 0;
+
+    vector<Leaf*> * tourOrder = new vector<Leaf *>();
+
     while (!queue.empty()){
         Leaf * subject = queue.top();
-
+        subject->eulerTourID = index;
+        tourOrder->push_back(subject);
+        index++;
+        queue.pop();
+        for(int i = 0; i < subject->connections.size(); i ++){
+            if(subject->connections.at(i) != subject->parentPath){
+                queue.push(subject->connections.at(i)->child);
+            }
+        }
+        queue.pop();
     }
+    return tourOrder;
 }
 //problem is accessing m*z times each toy, even if equal to 0.
 int main() {
@@ -157,11 +123,13 @@ int main() {
         town2->connections.push_back(conn);
         streets.push_back(conn);
     }
+
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
-
-
+    vector<Leaf *> * tourOrder = eulerTourIndexing(rootTown);
+    cout<<"here";
+/*
     //saving the queries and marking them with eulers
     vector<tuple<bool, int, int>> queries;
     for(int i = 0 ; i < requests; i ++){
@@ -196,6 +164,6 @@ int main() {
             int oldToy = targetStreet->toyType;
             //update
         }
-    }
+    }*/
     return 0;
 }
