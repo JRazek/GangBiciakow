@@ -128,7 +128,7 @@ void eulerTourIndexing(Leaf * root){
     int index = 0;
     while (!queue.empty()){
         Leaf * subject = queue.top();
-        
+
     }
 }
 //problem is accessing m*z times each toy, even if equal to 0.
