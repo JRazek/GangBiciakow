@@ -36,11 +36,14 @@ struct Leaf{
     int id;
     int eulerTourID;
 
-    bool queriesPerformed = true;//defines if we perform queries. Used in Euler's tour to index subNodes
+    bool queriesPerformed = false;//defines if we perform queries. Used in Euler's tour to index subNodes
 
     unordered_map<int, int> memoizationTable;
 
     unordered_set<Leaf *> directMarkedChildren;
+    unordered_set<Leaf *> subTreeAllMarkedChildren;
+
+
     unordered_set<Leaf *> changeQueriesBelonging;
     unordered_set<int> changeQueries;
 
@@ -80,7 +83,7 @@ void propagateParent(Leaf * root){
     }
 }
 
-void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, Leaf * closestQueriedParent){
+void eulerTourIndexing(Leaf * node, int * index, Leaf * closestQueriedParent){
     node->eulerTourID = *index;
     if(node->queriesPerformed){
         if(closestQueriedParent != nullptr)
@@ -90,35 +93,39 @@ void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, Leaf
         //adding closest marked children
     }
     *index += 1;
-    tourOrder.push_back(node);
     for(int i = 0; i < node->connections.size(); i ++){
         if(node->connections.at(i) != node->parentPath){
-            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder, closestQueriedParent);
-            tourOrder.push_back(node);
+            eulerTourIndexing(node->connections.at(i)->child, index, closestQueriedParent);
         }
     }
 }
+
 vector<Leaf *> getChangeList(Leaf * changeRoot, int changeQuery){
     vector<Leaf *> subTreeNodes;
 
     vector<Leaf *> affectedNodes;
+
     stack<Leaf *> queue;
     queue.push(changeRoot);
-    while(!queue.empty()) {
-        Leaf * subject = queue.top();
+    while (!queue.empty()) {
+        Leaf *subject = queue.top();
+        if(!subject->subTreeAllMarkedChildren.empty()){
+            affectedNodes.insert(affectedNodes.end(), subject->subTreeAllMarkedChildren.begin(), subject->subTreeAllMarkedChildren.end());
+            break;
+        }
         subTreeNodes.push_back(subject);
         queue.pop();
-        for (auto node : subject->directMarkedChildren){
+        for (auto node : subject->directMarkedChildren) {
             queue.push(node);
         }
     }
-    /*
     for(auto node : subTreeNodes){
+        changeRoot->subTreeAllMarkedChildren.insert(node);
         bool isPresent = node->changeQueries.find(changeQuery) != node->changeQueries.end();
         if(isPresent){
             affectedNodes.push_back(node);
         }
-    }*/
+    }
     return affectedNodes;
 }
 
@@ -154,6 +161,7 @@ int main() {
     //saving the queries for preProcessing of the tree
     vector<tuple<bool, int, int>> queries;
     int changeQuery = 0;
+    map<int, unordered_set<Leaf *>> accessedDuringQuery; //not sure if they are actually the ones that are impacted
     for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
@@ -164,18 +172,23 @@ int main() {
             targetTown->queriesPerformed = true;
             queries.push_back(make_tuple(typeOfQuery, targetTownID, 0));
             targetTown->changeQueries.insert(changeQuery);
+            if(accessedDuringQuery.find(changeQuery) == accessedDuringQuery.end()){
+                accessedDuringQuery[changeQuery] = unordered_set<Leaf *>();
+            }
+            accessedDuringQuery[changeQuery].insert(targetTown);
         }
-        if(!typeOfQuery){
+        else if(!typeOfQuery){
             int newToy = stoi(args[2]) - 1;
             int targetStreetID = stoi(args[1]) - 1;
             streets.at(targetStreetID)->child->changeQueries.insert(changeQuery);
             queries.push_back(make_tuple(typeOfQuery, targetStreetID, newToy));
+            streets.at(targetStreetID)->child->queriesPerformed = true;
             changeQuery ++;
         }
     }
     vector<Leaf *> tourOrder;
     int * tmp = new int(0);
-    eulerTourIndexing(rootTown, tmp, tourOrder, nullptr);
+    eulerTourIndexing(rootTown, tmp, rootTown);
     cout<<*tmp;
     delete(tmp);
 
@@ -189,6 +202,7 @@ int main() {
             int newToy = get<2>(queries.at(i));
             Leaf * changeRoot = targetStreet->child;//only below the street are affected
             impactedByCertainQuery[currQuery] = getChangeList(changeRoot, currQuery);
+            ////you must fucking test it or the fucking yeti will fuck u during sleep   i m   d e a d
         }
     }
 
