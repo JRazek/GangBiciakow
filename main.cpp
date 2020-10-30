@@ -30,10 +30,11 @@ struct Connection{
 };
 struct Leaf{
     Connection * parentPath;
-    vector<Connection *> connections;//all children after propagating the root
+    vector<Connection *> connections;//all children AND parent. Must omit parent by check. after propagating the root
     int id;
     int eulerTourID;
 
+    bool queriesPerformed = true;//defines if we perform queries. Used in Euler's tour to index subNodes
 
     unordered_map<int, int> memoizationTable;
 
@@ -77,18 +78,24 @@ void propagateParent(Leaf * root){
     }
 }
 
-void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder){
+void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, Leaf * closestQueriedParent){
     node->eulerTourID = *index;
+    if(node->queriesPerformed){
+        if(closestQueriedParent != nullptr)
+            closestQueriedParent->directMarkedChildren.insert(node);
+        
+        closestQueriedParent = node;
+        //adding closest marked children
+    }
     *index += 1;
     tourOrder.push_back(node);
     for(int i = 0; i < node->connections.size(); i ++){
         if(node->connections.at(i) != node->parentPath){
-            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder);
+            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder, closestQueriedParent);
             tourOrder.push_back(node);
         }
     }
 }
-//problem is accessing m*z times each toy, even if equal to 0.
 int main() {
     string line;
     getline(cin, line);
@@ -118,13 +125,7 @@ int main() {
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
-    vector<Leaf *> tourOrder;
-    int * tmp = new int(0);
-    eulerTourIndexing(rootTown, tmp, tourOrder);
-    cout<<*tmp;
-    delete(tmp);
-/*
-    //saving the queries and marking them with eulers
+    //saving the queries for preProcessing of the tree
     vector<tuple<bool, int, int>> queries;
     for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
@@ -133,7 +134,7 @@ int main() {
         if(typeOfQuery){
             int targetTownID = stoi(args[1]) - 1;
             Leaf * targetTown = towns[targetTownID];
-            targetTown->markedToSave = true;
+            targetTown->queriesPerformed = true;
             queries.push_back(make_tuple(typeOfQuery, targetTownID, 0));
 
         }
@@ -146,6 +147,14 @@ int main() {
         }
     }
 
+    vector<Leaf *> tourOrder;
+    int * tmp = new int(0);
+    eulerTourIndexing(rootTown, tmp, tourOrder, nullptr);
+    cout<<*tmp;
+    delete(tmp);
+
+
+/*
     for(int i = 0; i < queries.size(); i ++){
         bool requestType = get<0>(queries.at(i));
         if(requestType){
