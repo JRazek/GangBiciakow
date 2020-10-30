@@ -75,27 +75,16 @@ void propagateParent(Leaf * root){
     }
 }
 
-vector<Leaf*> * eulerTourIndexing(Leaf * node){
-
-    stack<Leaf *> queue;
-    int index = 0;
-
-    vector<Leaf*> * tourOrder = new vector<Leaf *>();
-
-    while (!queue.empty()){
-        Leaf * subject = queue.top();
-        subject->eulerTourID = index;
-        tourOrder->push_back(subject);
-        index++;
-        queue.pop();
-        for(int i = 0; i < subject->connections.size(); i ++){
-            if(subject->connections.at(i) != subject->parentPath){
-                queue.push(subject->connections.at(i)->child);
-            }
+void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder){
+    node->eulerTourID = *index;
+    *index += 1;
+    tourOrder.push_back(node);
+    for(int i = 0; i < node->connections.size(); i ++){
+        if(node->connections.at(i) != node->parentPath){
+            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder);
+            tourOrder.push_back(node);
         }
-        queue.pop();
     }
-    return tourOrder;
 }
 //problem is accessing m*z times each toy, even if equal to 0.
 int main() {
@@ -127,8 +116,11 @@ int main() {
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
-    vector<Leaf *> * tourOrder = eulerTourIndexing(rootTown);
-    cout<<"here";
+    vector<Leaf *> tourOrder;
+    int * tmp = new int(0);
+    eulerTourIndexing(rootTown, tmp, tourOrder);
+    cout<<*tmp;
+    delete(tmp);
 /*
     //saving the queries and marking them with eulers
     vector<tuple<bool, int, int>> queries;
