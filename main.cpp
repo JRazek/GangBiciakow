@@ -8,6 +8,7 @@
 
 using namespace std;
 struct Leaf;
+struct ChangeQueryInterval;
 
 struct Connection{
     Leaf * l1;
@@ -42,7 +43,9 @@ struct Leaf{
     int firstOccurrenceInEuler = -1;
     int lastOccurrenceInEuler;
 
+    set<ChangeQueryInterval *> accessedDuring; //accessed during these intervals
 
+    set<ChangeQueryInterval *> changedDuring; //changed during there intervals
 
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
@@ -57,7 +60,7 @@ struct ChangeQueryInterval{
     int num;
     Leaf * changedRootNode;
     set<Leaf *> accessedNodesDuringQuery;
-
+    int toyType;
     set<Leaf *> directlyImpacted; //only in subtree and only during that query accessed
     void findDirectlyImpacted(){
         set<Leaf*>::iterator it = accessedNodesDuringQuery.begin();
@@ -68,7 +71,7 @@ struct ChangeQueryInterval{
             it++;
         }
     }
-    ChangeQueryInterval(Leaf * root, int num){
+    ChangeQueryInterval(Leaf * root, int num, int toyType){
         this->changedRootNode = root;
         this->num = num;
     }
@@ -117,6 +120,24 @@ void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, int 
     }
 }
 
+void countPathToTheRoot(Leaf * node, int queryPerformed){
+    //this will write to node
+    stack<Leaf *> queue;
+    Leaf * currentNode = node;
+    while (currentNode->parentPath != nullptr){
+        queue.push(currentNode);
+        currentNode = currentNode->parentPath->parent;
+    }
+    map<int, int> totalOccurrences;
+    while (!queue.empty()){
+        Leaf * subject = queue.top();
+        queue.pop();
+        Connection * street = subject->parentPath;
+        if( totalOccurrences.find(street->toyType) == totalOccurrences.end())
+            totalOccurrences[street->toyType] = 0;
+        totalOccurrences[street->toyType] ++;
+    }
+}
 
 int main() {
     string line;
@@ -150,24 +171,29 @@ int main() {
 
     int changeQueryNum = 0;//if 0 than it means that there's no change.
     map<int, ChangeQueryInterval *> changeQueryIntervals;//number and query itself
+    changeQueryIntervals[0] =  new ChangeQueryInterval(nullptr, changeQueryNum, 0);
+
 
     for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
         bool typeOfQuery = args[0][0] == 'Z' ? true : false;//first argument and the first char in the string
         if(typeOfQuery){
-            if(changeQueryNum > 0) {
-                Leaf *targetTown = towns.at(stoi(args[1]) - 1);
-                changeQueryIntervals.at(changeQueryNum)->accessedNodesDuringQuery.insert(targetTown);
-            }
+            Leaf * targetTown = towns.at(stoi(args[1]) - 1);
+            ChangeQueryInterval * currInterval = changeQueryIntervals.at(changeQueryNum);
+            currInterval->accessedNodesDuringQuery.insert(targetTown);
+            targetTown->accessedDuring.insert(currInterval);
         }
         else if(!typeOfQuery){
-            changeQueryNum++;
             Connection * street = streets.at(stoi(args[1]) - 1);
             int newToy = stoi(args[2]) - 1;
             Leaf * targetTown = street->child;
-            ChangeQueryInterval * changeQueryInterval = new ChangeQueryInterval(targetTown, changeQueryNum);
-            changeQueryIntervals[changeQueryNum] = changeQueryInterval;
+            if(street->toyType != newToy) {
+                changeQueryNum++;
+                ChangeQueryInterval * changeQueryInterval = new ChangeQueryInterval(targetTown, changeQueryNum, newToy);
+                changeQueryIntervals[changeQueryNum] = changeQueryInterval;
+                targetTown->changedDuring.insert(changeQueryInterval);
+            }
         }
     }
     vector<Leaf *> tourOrder;
@@ -180,18 +206,13 @@ int main() {
         town->lastOccurrenceInEuler = i;
     }
 
-    for(map<int, ChangeQueryInterval*>::iterator it = changeQueryIntervals.begin(); it != changeQueryIntervals.end(); it++){
-        ChangeQueryInterval * interval = it->second;
-        interval->findDirectlyImpacted();
-        set<Leaf *> affected = interval->directlyImpacted;
-        for(set<Leaf*>::iterator it2 = affected.begin(); it2 != affected.end(); it2++){
+    for(map<int, ChangeQueryInterval *>::iterator it1 = changeQueryIntervals.begin(); it1 != changeQueryIntervals.end(); ++it1){
+        ChangeQueryInterval * interval = it1->second;
+        for(set<Leaf *>::iterator it2 = interval->accessedNodesDuringQuery.begin(); it2 != interval->accessedNodesDuringQuery.end(); ++it2){
             Leaf * node = *it2;
+            
         }
     }
-    /**
-     * now iterate over all change queries and all the nodes that were in this query AND
-     * check if specific node accessed during that query belongs to subtree of node that was changed in log(n)
-     *
-    **/
+
     return 0;
 }
