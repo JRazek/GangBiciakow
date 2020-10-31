@@ -161,7 +161,10 @@ int main() {
     vector<Leaf *> tourOrder;
     int * tmp = new int(0);
     eulerTourIndexing(rootTown, tmp, rootTown);
-
-
+    /**
+     * now iterate over all change queries and all the nodes that were in this query AND
+     * check if specific node accessed during that query belongs to subtree of node that was changed in log(n) time!
+     *
+    **/
     return 0;
 }
