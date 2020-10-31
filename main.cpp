@@ -2,6 +2,7 @@
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
+#include <set>
 #include <vector>
 #include <map>
 
@@ -36,16 +37,17 @@ struct Leaf{
     int id;
     int eulerTourID;
 
-    bool queriesPerformed = false;//defines if we perform queries. Used in Euler's tour to index subNodes
+    bool requestQueriesPerformed = false;//defines if we perform request queries.
+    bool changeQueriesPerformed = false;//defines if we perform change queries.
 
     unordered_map<int, int> memoizationTable;
 
     unordered_set<Leaf *> directMarkedChildren;
-    unordered_set<Leaf *> subTreeAllMarkedChildren;
 
-
-    unordered_set<Leaf *> changeQueriesBelonging;
-    unordered_set<int> changeQueries;
+    /**
+     * if the node is ever changed - this will have the nodes that were accessed between that change and another
+    **/
+    map<int, set<Leaf* >> nodesAccessedDuringChangeQuery;
 
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
@@ -85,7 +87,7 @@ void propagateParent(Leaf * root){
 
 void eulerTourIndexing(Leaf * node, int * index, Leaf * closestQueriedParent){
     node->eulerTourID = *index;
-    if(node->queriesPerformed){
+    if(node->requestQueriesPerformed || node->changeQueriesPerformed){
         if(closestQueriedParent != nullptr)
             closestQueriedParent->directMarkedChildren.insert(node);
 
@@ -100,35 +102,8 @@ void eulerTourIndexing(Leaf * node, int * index, Leaf * closestQueriedParent){
     }
 }
 
-vector<Leaf *> getChangeList(Leaf * changeRoot, int changeQuery){
-    vector<Leaf *> subTreeNodes;
 
-    vector<Leaf *> affectedNodes;
 
-    stack<Leaf *> queue;
-    queue.push(changeRoot);
-    while (!queue.empty()) {
-        Leaf *subject = queue.top();
-        queue.pop();
-        if(!subject->subTreeAllMarkedChildren.empty()){
-            subTreeNodes.insert(subTreeNodes.end(), subject->subTreeAllMarkedChildren.begin(), subject->subTreeAllMarkedChildren.end());
-            //rekurencyjne zapisywanie do dalszych, jezeli change query jest performed
-            continue;
-        }
-        subTreeNodes.push_back(subject);
-        for (auto node : subject->directMarkedChildren) {
-            queue.push(node);
-        }
-    }
-    for(auto node : subTreeNodes){
-        changeRoot->subTreeAllMarkedChildren.insert(node);
-        bool isPresent = node->changeQueries.find(changeQuery) != node->changeQueries.end();
-        if(isPresent){
-            affectedNodes.push_back(node);
-        }
-    }
-    return affectedNodes;
-}
 
 int main() {
     string line;
@@ -159,67 +134,34 @@ int main() {
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
-    //saving the queries for preProcessing of the tree
-    vector<tuple<bool, int, int>> queries;
-    int changeQuery = 0;
-    map<int, unordered_set<Leaf *>> accessedDuringQuery; //not sure if they are actually the ones that are impacted
+
+    int changeQuery = 0;//if 0 than it means that theres no change.
+
+    unordered_map<int, Leaf *> changeQueriesPerformedTowns;//fast access just for assigning
+
     for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
         bool typeOfQuery = args[0][0] == 'Z' ? true : false;//first argument and the first char in the string
         if(typeOfQuery){
-            int targetTownID = stoi(args[1]) - 1;
-            Leaf * targetTown = towns[targetTownID];
-            targetTown->queriesPerformed = true;
-            queries.push_back(make_tuple(typeOfQuery, targetTownID, 0));
-            targetTown->changeQueries.insert(changeQuery);
-            if(accessedDuringQuery.find(changeQuery) == accessedDuringQuery.end()){
-                accessedDuringQuery[changeQuery] = unordered_set<Leaf *>();
+            Leaf * targetTown = towns.at(stoi(args[1]) - 1);
+            if(changeQuery > 0){
+                changeQueriesPerformedTowns[changeQuery]->nodesAccessedDuringChangeQuery[changeQuery].insert(targetTown);
             }
-            accessedDuringQuery[changeQuery].insert(targetTown);
         }
         else if(!typeOfQuery){
+            changeQuery++;
+            Connection * street = streets.at(stoi(args[1]) - 1);
             int newToy = stoi(args[2]) - 1;
-            int targetStreetID = stoi(args[1]) - 1;
-            streets.at(targetStreetID)->child->changeQueries.insert(changeQuery);
-            queries.push_back(make_tuple(typeOfQuery, targetStreetID, newToy));
-            streets.at(targetStreetID)->child->queriesPerformed = true;
-            changeQuery ++;
+            Leaf * targetTown = street->child;
+            targetTown->nodesAccessedDuringChangeQuery[changeQuery] = set<Leaf*>();
+            changeQueriesPerformedTowns[changeQuery] = targetTown;
         }
     }
     vector<Leaf *> tourOrder;
     int * tmp = new int(0);
     eulerTourIndexing(rootTown, tmp, rootTown);
-    cout<<*tmp;
-    delete(tmp);
 
-    unordered_map<int, vector<Leaf *>> impactedByCertainQuery;
 
-    int currQuery = 0;
-    for(int i = 0; i < queries.size(); i ++){
-        bool requestType = get<0>(queries.at(i));
-        if(!requestType){
-            Connection * targetStreet = streets[get<1>(queries.at(i))];
-            int newToy = get<2>(queries.at(i));
-            Leaf * changeRoot = targetStreet->child;//only below the street are affected
-            impactedByCertainQuery[currQuery] = getChangeList(changeRoot, currQuery);
-            ////you must fucking test it or the fucking yeti will fuck u during sleep   i m   d e a d
-        }
-    }
-
-/*
-    for(int i = 0; i < queries.size(); i ++){
-        bool requestType = get<0>(queries.at(i));
-        if(requestType){
-            Leaf * targetTown = towns[get<1>(queries.at(i))];
-            //count and mark others
-        }
-        else if(!requestType){
-            Connection * targetStreet = streets[get<1>(queries.at(i))];
-            int newToy = get<2>(queries.at(i));
-            int oldToy = targetStreet->toyType;
-            //update
-        }
-    }*/
     return 0;
 }
