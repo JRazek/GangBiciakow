@@ -38,8 +38,11 @@ struct Leaf{
     vector<Connection *> connections;
     int id;
     int eulerTourID;
+    int levelInTree;
     int firstOccurrenceInEuler = -1;
     int lastOccurrenceInEuler;
+
+
 
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
@@ -101,13 +104,14 @@ void propagateParent(Leaf * root){
     }
 }
 
-void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder){
+void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, int level = 0){
     node->eulerTourID = *index;
+    node->levelInTree = level;
     *index += 1;
     tourOrder.push_back(node);
     for(int i = 0; i < node->connections.size(); i ++){
         if(node->connections.at(i) != node->parentPath){
-            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder);
+            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder, ++level);
             tourOrder.push_back(node);
         }
     }
@@ -176,12 +180,14 @@ int main() {
         town->lastOccurrenceInEuler = i;
     }
 
-
     for(map<int, ChangeQueryInterval*>::iterator it = changeQueryIntervals.begin(); it != changeQueryIntervals.end(); it++){
         ChangeQueryInterval * interval = it->second;
         interval->findDirectlyImpacted();
+        set<Leaf *> affected = interval->directlyImpacted;
+        for(set<Leaf*>::iterator it2 = affected.begin(); it2 != affected.end(); it2++){
+            Leaf * node = *it2;
+        }
     }
-
     /**
      * now iterate over all change queries and all the nodes that were in this query AND
      * check if specific node accessed during that query belongs to subtree of node that was changed in log(n)
