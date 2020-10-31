@@ -109,12 +109,13 @@ vector<Leaf *> getChangeList(Leaf * changeRoot, int changeQuery){
     queue.push(changeRoot);
     while (!queue.empty()) {
         Leaf *subject = queue.top();
+        queue.pop();
         if(!subject->subTreeAllMarkedChildren.empty()){
-            affectedNodes.insert(affectedNodes.end(), subject->subTreeAllMarkedChildren.begin(), subject->subTreeAllMarkedChildren.end());
-            break;
+            subTreeNodes.insert(subTreeNodes.end(), subject->subTreeAllMarkedChildren.begin(), subject->subTreeAllMarkedChildren.end());
+            //rekurencyjne zapisywanie do dalszych, jezeli change query jest performed
+            continue;
         }
         subTreeNodes.push_back(subject);
-        queue.pop();
         for (auto node : subject->directMarkedChildren) {
             queue.push(node);
         }
