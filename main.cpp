@@ -2,9 +2,9 @@
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
+#include <map>
 #include <set>
 #include <vector>
-#include <map>
 
 using namespace std;
 struct Leaf;
@@ -33,27 +33,28 @@ struct Connection{
 };
 struct Leaf{
     Connection * parentPath;
-    vector<Connection *> connections;//all children AND parent. Must omit parent by check. after propagating the root
+
+    //All children AND parent. Must omit parent by check. after propagating the root
+    vector<Connection *> connections;
     int id;
     int eulerTourID;
+    int firstOccurrenceInEuler = -1;
+    int lastOccurrenceInEuler;
 
-    bool requestQueriesPerformed = false;//defines if we perform request queries.
-    bool changeQueriesPerformed = false;//defines if we perform change queries.
+    //First is the changeQuery that it belongs to and second (toyType, quantity)
+    map<int, unordered_map<int, int>> memoizationTable;
 
-    unordered_map<int, int> memoizationTable;
 
-    unordered_set<Leaf *> directMarkedChildren;
-
-    /**
-     * if the node is ever changed - this will have the nodes that were accessed between that change and another
-    **/
+    //If the node is ever changed - this will have the nodes that were accessed between that change and another
     map<int, set<Leaf* >> nodesAccessedDuringChangeQuery;
 
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
     }
 };
-
+bool belongsToSubTree(Leaf * root, Leaf * node){
+    return (root->firstOccurrenceInEuler <= node->firstOccurrenceInEuler && root->lastOccurrenceInEuler >= node->firstOccurrenceInEuler);
+}
 vector<string> split(string str, char divider){
     vector<string> result;
 
@@ -85,24 +86,17 @@ void propagateParent(Leaf * root){
     }
 }
 
-void eulerTourIndexing(Leaf * node, int * index, Leaf * closestQueriedParent){
+void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder){
     node->eulerTourID = *index;
-    if(node->requestQueriesPerformed || node->changeQueriesPerformed){
-        if(closestQueriedParent != nullptr)
-            closestQueriedParent->directMarkedChildren.insert(node);
-
-        closestQueriedParent = node;
-        //adding closest marked children
-    }
     *index += 1;
+    tourOrder.push_back(node);
     for(int i = 0; i < node->connections.size(); i ++){
         if(node->connections.at(i) != node->parentPath){
-            eulerTourIndexing(node->connections.at(i)->child, index, closestQueriedParent);
+            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder);
+            tourOrder.push_back(node);
         }
     }
 }
-
-
 
 
 int main() {
@@ -160,10 +154,17 @@ int main() {
     }
     vector<Leaf *> tourOrder;
     int * tmp = new int(0);
-    eulerTourIndexing(rootTown, tmp, rootTown);
+    eulerTourIndexing(rootTown, tmp,tourOrder);
+    for(int i = 0; i < tourOrder.size(); i ++){
+        Leaf * town = tourOrder.at(i);
+        if(town->firstOccurrenceInEuler == -1)
+            town->firstOccurrenceInEuler = i;
+        town->lastOccurrenceInEuler = i;
+    }
+    
     /**
      * now iterate over all change queries and all the nodes that were in this query AND
-     * check if specific node accessed during that query belongs to subtree of node that was changed in log(n) time!
+     * check if specific node accessed during that query belongs to subtree of node that was changed in log(n)
      *
     **/
     return 0;
