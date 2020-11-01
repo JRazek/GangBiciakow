@@ -215,15 +215,14 @@ int main() {
 
     int changeQueryNum = 0;//if 0 than it means that there's no change.
 
-    vector<Leaf *> queriedNodes;
-    int min = 2147483646;
+
     for(int i = 0 ; i < requests; i ++){
         getline(cin, line);
         vector<string> args = split(line, ' ');
         bool typeOfQuery = args[0][0] == 'Z' ? true : false;//first argument and the first char in the string
         if(typeOfQuery){
             Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-            queriedNodes.push_back(targetTown);
+
         }
         else if(!typeOfQuery){
             Connection * street = streets.at(stoi(args[1]) - 1);
@@ -234,7 +233,7 @@ int main() {
             }
         }
     }
-    cout<<min;
+    
     vector<Leaf *> tourOrder;
     vector<int> eulerTourIDs;
     int * tmp = new int(0);
