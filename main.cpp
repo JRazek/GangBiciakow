@@ -9,46 +9,6 @@
 #include <queue>
 using namespace std;
 struct Leaf;
-struct ChangeQueryInterval;
-int min(vector<int> values){
-    int min = values[0];
-    for(int i = 0; i < values.size(); i++){
-        if(min < values[i])
-            min = values[i];
-    }
-    return min;
-}
-struct SparseTableMin{
-    vector<int> values;
-    vector<vector<int>*> sparseTable;
-    SparseTableMin(vector<int> values){
-        this->values = values;
-        int columns = values.size();
-        int rows = log2(values.size());
-        for(int i = 0; i < rows; i ++){
-            sparseTable.push_back(new vector<int>());
-            int segmentSize = pow(2, i);
-            for(int j = 0; j < columns - segmentSize + 1; j ++){
-                if(i == 0){
-                    sparseTable[0]->push_back(values[j]);
-                } else{
-                    sparseTable[i]->push_back(getMinimum(j, j + segmentSize - 1));
-                }
-            }
-        }
-    }
-    int getMinimum(int from, int to){
-        int length = to - from + 1;
-        int rowNum = (int)(log2(length)) - 1;
-        int fixSize = pow(2, rowNum);
-        vector<int> * row = sparseTable[rowNum];
-        int firstMin = row->at(from);
-        int secondMin = row->at(to - fixSize + 1);
-        int min = firstMin > secondMin ? secondMin : firstMin;
-        return min;
-    }
-};
-
 struct Connection{
     Leaf * l1;
     Leaf * l2;
@@ -103,8 +63,13 @@ vector<string> split(string str, char divider){
 void propagateParent(Leaf * root){
     stack<Leaf *> queue;
     queue.push(root);
+    root->levelInTree = 0;
     while (!queue.empty()){
         Leaf * subject = queue.top();
+        if(subject != root) {
+            int height = subject->parentPath->parent->levelInTree + 1;
+            subject->levelInTree = height;
+        }
         queue.pop();
         for(int i = 0 ; i < subject->connections.size(); i ++){
             Connection * c = subject->connections.at(i);
@@ -117,21 +82,17 @@ void propagateParent(Leaf * root){
         }
     }
 }
-void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, int level = 0){
-    node->eulerTourID = *index;
-    node->levelInTree = level;
-    *index += 1;
-    tourOrder.push_back(node);
-    for(int i = 0; i < node->connections.size(); i ++){
-        if(node->connections.at(i) != node->parentPath){
-            eulerTourIndexing(node->connections.at(i)->child, index, tourOrder, ++level);
-            tourOrder.push_back(node);
-        }
+
+struct Block{
+    int ID; //the number of the block starting from top
+    int height;
+
+    vector<Leaf *> floors; //toyType of the parent path, the town itself
+    vector<pair<map<int, int>, Leaf *>> entrance; //the memoization and the leaf that is entered
+    Block(int id, int height){
+         this->ID = id;
+         this->height = height;
     }
-}
-
-class Block{
-
 };
 
 int main() {
@@ -164,24 +125,23 @@ int main() {
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
 
-    vector<Leaf *> tourOrder;
-    vector<int> eulerTourIDs;
     int * tmp = new int(0);
-    eulerTourIndexing(rootTown, tmp,tourOrder);
     int height = 0;
-    for(int i = 0; i < tourOrder.size(); i ++){
-        Leaf * town = tourOrder.at(i);
-        if(town->firstOccurrenceInEuler == -1)
-            town->firstOccurrenceInEuler = i;
-        town->lastOccurrenceInEuler = i;
+    for(int i = 0; i < townsCount; i ++){
+        Leaf * town = towns.at(i);
         if(town->levelInTree > height)
             height = town->levelInTree;
-        eulerTourIDs.push_back(town->eulerTourID);
     }
 
     int blockSize = sqrt(height);
-    cout<<blockSize;
-    SparseTableMin sparseTableMin(eulerTourIDs);
+    int blocksCount = (height / blockSize) + (bool)(height % blockSize);
+    vector<Block *> blocks;
+    for(int i = 0; i < blocksCount; i ++){
+        blocks.push_back(new Block());
+    }
+    cout<<blocksCount<<" bS = "<<blockSize<<endl;
+    cout<<height;
+
 
 
 
