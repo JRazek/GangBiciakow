@@ -73,8 +73,6 @@ struct Connection{
 };
 struct Leaf{
     Connection * parentPath;
-
-    //All children AND parent. Must omit parent by check. after propagating the root
     vector<Connection *> connections;
     int id;
     int eulerTourID;
@@ -82,43 +80,13 @@ struct Leaf{
     int firstOccurrenceInEuler = -1;
     int lastOccurrenceInEuler;
 
-    queue<ChangeQueryInterval *> intervalsAccessed;
-
-    queue<ChangeQueryInterval *> intervalsChanged;
-
-    unordered_map<int, int> memoization;
-    int lastSavedMemo = -1;
-    unordered_set<int> queriesNumsToMemo;
-
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
     }
 };
-
 bool belongsToSubTree(Leaf * root, Leaf * node){
     return (root->firstOccurrenceInEuler <= node->firstOccurrenceInEuler && root->lastOccurrenceInEuler >= node->firstOccurrenceInEuler);
 }
-
-struct ChangeQueryInterval{
-    int num;
-    Leaf * changedRootNode;
-    set<Leaf *> accessedNodesDuringQuery;
-    int toyType;
-    set<Leaf *> directlyImpacted; //only in subtree and only during that query accessed
-    void findDirectlyImpacted(){
-        set<Leaf*>::iterator it = accessedNodesDuringQuery.begin();
-        while (it != accessedNodesDuringQuery.end()){
-            Leaf * node = *it;
-            if(belongsToSubTree(changedRootNode, node))
-                directlyImpacted.insert(node);
-            it++;
-        }
-    }
-    ChangeQueryInterval(Leaf * root, int num, int toyType){
-        this->changedRootNode = root;
-        this->num = num;
-    }
-};
 vector<string> split(string str, char divider){
     vector<string> result;
 
@@ -149,7 +117,6 @@ void propagateParent(Leaf * root){
         }
     }
 }
-
 void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, int level = 0){
     node->eulerTourID = *index;
     node->levelInTree = level;
@@ -163,25 +130,9 @@ void eulerTourIndexing(Leaf * node, int * index, vector<Leaf *> &tourOrder, int 
     }
 }
 
-void countPathToTheRoot(Leaf * node, int queryPerformed){
-    //this will write to node
-    stack<Leaf *> queue;
-    Leaf * currentNode = node;
-    while (currentNode->parentPath != nullptr){
-        queue.push(currentNode);
-        currentNode = currentNode->parentPath->parent;
-        //what if found?
-    }
-    unordered_map<int, int> totalOccurrences;
-    while (!queue.empty()){
-        Leaf * subject = queue.top();
-        queue.pop();
-        Connection * street = subject->parentPath;
-        if( totalOccurrences.find(street->toyType) == totalOccurrences.end())
-            totalOccurrences[street->toyType] = 0;
-        totalOccurrences[street->toyType] ++;
-    }
-}
+class Block{
+
+};
 
 int main() {
     string line;
@@ -213,42 +164,26 @@ int main() {
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
 
-    int changeQueryNum = 0;//if 0 than it means that there's no change.
-
-
-    for(int i = 0 ; i < requests; i ++){
-        getline(cin, line);
-        vector<string> args = split(line, ' ');
-        bool typeOfQuery = args[0][0] == 'Z' ? true : false;//first argument and the first char in the string
-        if(typeOfQuery){
-            Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-
-        }
-        else if(!typeOfQuery){
-            Connection * street = streets.at(stoi(args[1]) - 1);
-            int newToy = stoi(args[2]) - 1;
-            Leaf * targetTown = street->child;
-            if(street->toyType != newToy) {
-                changeQueryNum++;
-            }
-        }
-    }
-    
     vector<Leaf *> tourOrder;
     vector<int> eulerTourIDs;
     int * tmp = new int(0);
     eulerTourIndexing(rootTown, tmp,tourOrder);
-
+    int height = 0;
     for(int i = 0; i < tourOrder.size(); i ++){
         Leaf * town = tourOrder.at(i);
         if(town->firstOccurrenceInEuler == -1)
             town->firstOccurrenceInEuler = i;
         town->lastOccurrenceInEuler = i;
+        if(town->levelInTree > height)
+            height = town->levelInTree;
         eulerTourIDs.push_back(town->eulerTourID);
     }
 
+    int blockSize = sqrt(height);
+    cout<<blockSize;
     SparseTableMin sparseTableMin(eulerTourIDs);
 
-   // SparseTableMin sparseTableMin({5,1,4,7,6,3,0,2});
+
+
     return 0;
 }
