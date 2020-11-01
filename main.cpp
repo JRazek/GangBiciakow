@@ -5,7 +5,7 @@
 #include <set>
 #include <unordered_set>
 #include <vector>
-
+#include <iterator>
 using namespace std;
 struct Leaf;
 struct ChangeQueryInterval;
@@ -210,7 +210,8 @@ int main() {
         ChangeQueryInterval * interval = it1->second;
         for(set<Leaf *>::iterator it2 = interval->accessedNodesDuringQuery.begin(); it2 != interval->accessedNodesDuringQuery.end(); ++it2){
             Leaf * node = *it2;
-            
+            int level = node->levelInTree;
+            countPathToTheRoot(node, interval->num);
         }
     }
 
