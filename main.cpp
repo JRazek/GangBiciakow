@@ -5,11 +5,49 @@
 #include <set>
 #include <unordered_set>
 #include <vector>
-#include <iterator>
+#include <math.h>
 #include <queue>
 using namespace std;
 struct Leaf;
 struct ChangeQueryInterval;
+int min(vector<int> values){
+    int min = values[0];
+    for(int i = 0; i < values.size(); i++){
+        if(min < values[i])
+            min = values[i];
+    }
+    return min;
+}
+struct SparseTableMin{
+    vector<int> values;
+    vector<vector<int>*> sparseTable;
+    SparseTableMin(vector<int> values){
+        this->values = values;
+        int columns = values.size();
+        int rows = log2(values.size());
+        for(int i = 0; i < rows; i ++){
+            sparseTable.push_back(new vector<int>());
+            int segmentSize = pow(2, i);
+            for(int j = 0; j < columns - segmentSize + 1; j ++){
+                if(i == 0){
+                    sparseTable[0]->push_back(values[j]);
+                } else{
+                    sparseTable[i]->push_back(getMinimum(j, j + segmentSize - 1));
+                }
+            }
+        }
+    }
+    int getMinimum(int from, int to){
+        int length = to - from + 1;
+        int rowNum = (int)(log2(length)) - 1;
+        int fixSize = pow(2, rowNum);
+        vector<int> * row = sparseTable[rowNum];
+        int firstMin = row->at(from);
+        int secondMin = row->at(to - fixSize + 1);
+        int min = firstMin > secondMin ? secondMin : firstMin;
+        return min;
+    }
+};
 
 struct Connection{
     Leaf * l1;
@@ -142,7 +180,6 @@ void countPathToTheRoot(Leaf * node, int queryPerformed){
         if( totalOccurrences.find(street->toyType) == totalOccurrences.end())
             totalOccurrences[street->toyType] = 0;
         totalOccurrences[street->toyType] ++;
-
     }
 }
 
@@ -187,9 +224,7 @@ int main() {
         bool typeOfQuery = args[0][0] == 'Z' ? true : false;//first argument and the first char in the string
         if(typeOfQuery){
             Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-            ChangeQueryInterval * currInterval = changeQueryIntervals.at(changeQueryNum);
-            currInterval->accessedNodesDuringQuery.insert(targetTown);
-            targetTown->intervalsAccessed.push(currInterval);
+
         }
         else if(!typeOfQuery){
             Connection * street = streets.at(stoi(args[1]) - 1);
@@ -197,40 +232,24 @@ int main() {
             Leaf * targetTown = street->child;
             if(street->toyType != newToy) {
                 changeQueryNum++;
-                ChangeQueryInterval * changeQueryInterval = new ChangeQueryInterval(targetTown, changeQueryNum, newToy);
-                changeQueryIntervals[changeQueryNum] = changeQueryInterval;
-                targetTown->intervalsChanged.push(changeQueryInterval);
             }
         }
     }
     vector<Leaf *> tourOrder;
+    vector<int> eulerTourIDs;
     int * tmp = new int(0);
     eulerTourIndexing(rootTown, tmp,tourOrder);
+
     for(int i = 0; i < tourOrder.size(); i ++){
         Leaf * town = tourOrder.at(i);
         if(town->firstOccurrenceInEuler == -1)
             town->firstOccurrenceInEuler = i;
         town->lastOccurrenceInEuler = i;
+        eulerTourIDs.push_back(town->eulerTourID);
     }
 
-    for(map<int, ChangeQueryInterval *>::iterator it1 = changeQueryIntervals.begin(); it1 != changeQueryIntervals.end(); ++it1){
-        ChangeQueryInterval * interval = it1->second;
-        for(set<Leaf *>::iterator it2 = interval->accessedNodesDuringQuery.begin(); it2 != interval->accessedNodesDuringQuery.end(); ++it2){
-            Leaf * node = *it2;
-            int level = node->levelInTree;
-
-            node->intervalsAccessed.pop();
-            int nextAccessing = -1;
-            if(!node->intervalsAccessed.empty())
-                nextAccessing = node->intervalsAccessed.front()->num;
-
-            if(nextAccessing != -1 && abs(interval->num - nextAccessing) + 1 < node->levelInTree)
-                node->queriesNumsToMemo.insert(interval->num);
-
-            countPathToTheRoot(node, interval->num);
-
-        }
-    }
-
+    SparseTableMin sparseTableMin(eulerTourIDs);
+    cout<<sparseTableMin.getMinimum(700, 701);
+   // SparseTableMin sparseTableMin({5,1,4,7,6,3,0,2});
     return 0;
 }
