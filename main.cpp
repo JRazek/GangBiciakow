@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 #include <iterator>
+#include <queue>
 using namespace std;
 struct Leaf;
 struct ChangeQueryInterval;
@@ -43,9 +44,13 @@ struct Leaf{
     int firstOccurrenceInEuler = -1;
     int lastOccurrenceInEuler;
 
-    set<ChangeQueryInterval *> accessedDuring; //accessed during these intervals
+    queue<ChangeQueryInterval *> intervalsAccessed;
 
-    set<ChangeQueryInterval *> changedDuring; //changed during there intervals
+    queue<ChangeQueryInterval *> intervalsChanged;
+
+    unordered_map<int, int> memoization;
+    int lastSavedMemo = -1;
+    unordered_set<int> queriesNumsToMemo;
 
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
@@ -127,8 +132,9 @@ void countPathToTheRoot(Leaf * node, int queryPerformed){
     while (currentNode->parentPath != nullptr){
         queue.push(currentNode);
         currentNode = currentNode->parentPath->parent;
+        //what if found?
     }
-    map<int, int> totalOccurrences;
+    unordered_map<int, int> totalOccurrences;
     while (!queue.empty()){
         Leaf * subject = queue.top();
         queue.pop();
@@ -136,6 +142,7 @@ void countPathToTheRoot(Leaf * node, int queryPerformed){
         if( totalOccurrences.find(street->toyType) == totalOccurrences.end())
             totalOccurrences[street->toyType] = 0;
         totalOccurrences[street->toyType] ++;
+
     }
 }
 
@@ -182,7 +189,7 @@ int main() {
             Leaf * targetTown = towns.at(stoi(args[1]) - 1);
             ChangeQueryInterval * currInterval = changeQueryIntervals.at(changeQueryNum);
             currInterval->accessedNodesDuringQuery.insert(targetTown);
-            targetTown->accessedDuring.insert(currInterval);
+            targetTown->intervalsAccessed.push(currInterval);
         }
         else if(!typeOfQuery){
             Connection * street = streets.at(stoi(args[1]) - 1);
@@ -192,7 +199,7 @@ int main() {
                 changeQueryNum++;
                 ChangeQueryInterval * changeQueryInterval = new ChangeQueryInterval(targetTown, changeQueryNum, newToy);
                 changeQueryIntervals[changeQueryNum] = changeQueryInterval;
-                targetTown->changedDuring.insert(changeQueryInterval);
+                targetTown->intervalsChanged.push(changeQueryInterval);
             }
         }
     }
@@ -211,7 +218,17 @@ int main() {
         for(set<Leaf *>::iterator it2 = interval->accessedNodesDuringQuery.begin(); it2 != interval->accessedNodesDuringQuery.end(); ++it2){
             Leaf * node = *it2;
             int level = node->levelInTree;
+
+            node->intervalsAccessed.pop();
+            int nextAccessing = -1;
+            if(!node->intervalsAccessed.empty())
+                nextAccessing = node->intervalsAccessed.front()->num;
+
+            if(nextAccessing != -1 && abs(interval->num - nextAccessing) + 1 < node->levelInTree)
+                node->queriesNumsToMemo.insert(interval->num);
+
             countPathToTheRoot(node, interval->num);
+
         }
     }
 
