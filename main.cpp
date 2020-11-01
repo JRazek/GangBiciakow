@@ -137,7 +137,7 @@ int main() {
     int blocksCount = (height / blockSize) + (bool)(height % blockSize);
     vector<Block *> blocks;
     for(int i = 0; i < blocksCount; i ++){
-        blocks.push_back(new Block());
+        blocks.push_back(new Block(i, blockSize));
     }
     cout<<blocksCount<<" bS = "<<blockSize<<endl;
     cout<<height;
