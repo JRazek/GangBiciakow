@@ -2,6 +2,7 @@
 #include <stack>
 #include <unordered_map>
 #include <map>
+#include <bits/stdc++.h>
 #include <set>
 #include <unordered_set>
 #include <vector>
@@ -38,10 +39,12 @@ struct Leaf{
     int id;
     int eulerTourID;
     int levelInTree;
-    int firstOccurrenceInEuler = -1;
-    int lastOccurrenceInEuler;
 
     Block * block;
+    Leaf * entranceLeafInBlock;
+
+    int levelInBlock;
+
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
     }
@@ -53,8 +56,7 @@ struct Block{
     int levelInTreeOfLowestFloor;
     int levelInTreeOfHighestFloor;
 
-   // set<Leaf *> lowestFloor; // looking from the top
-   //  set<Leaf *> highestFloor; // looking from the bottom
+    unordered_map<Leaf *, pair<Leaf *, unordered_map<int,int>>> tpWay; // the entrance(the highest level) and escape from the block
 
     map<Leaf *, map<int,int>> highestFloorMemoization; //the memoization and the leaf that is entered
     Block(int id, int s){
@@ -64,9 +66,6 @@ struct Block{
         levelInTreeOfHighestFloor = levelInTreeOfLowestFloor + (blockSize - 1);
     }
 };
-bool belongsToSubTree(Leaf * root, Leaf * node){
-    return (root->firstOccurrenceInEuler <= node->firstOccurrenceInEuler && root->lastOccurrenceInEuler >= node->firstOccurrenceInEuler);
-}
 vector<string> split(string str, char divider){
     vector<string> result;
 
@@ -103,35 +102,91 @@ void propagateParent(Leaf * root){
     }
 }
 
-void blockPropagation(Leaf * node, vector<Block *> &blocks){
-    int levelInTree = node->levelInTree;
-    int blockHeight = blocks.at(0)->blockSize;
-    int blockID = levelInTree / blockHeight;
+void blockPropagation(Leaf * root, vector<Block *> &blocks){
 
-    Block * block = blocks[blockID];
+    stack<Leaf*> queue;
+    unordered_map<int,int> memoization;
 
-    node->block = block;
+    queue.push(root);
 
+    Leaf * lastEntranceToBlock;
 
-    if(levelInTree == block->levelInTreeOfHighestFloor)
-        block->highestFloorMemoization[node];
+    while(!queue.empty()){
+        Leaf * node = queue.top();
+        queue.pop();
 
-    //block->floors[levelInBlock].push_back(node);
+        int levelInTree = node->levelInTree;
+        int blockHeight = blocks.at(0)->blockSize;
+        int blockID = levelInTree / blockHeight;
+        int heightInBlock = levelInTree % blockHeight;
 
-    for(int i = 0; i < node->connections.size(); i ++){
-        if(node->connections.at(i) != node->parentPath){
-            blockPropagation(node->connections.at(i)->child, blocks);
+        node->levelInBlock = heightInBlock;
+
+        if(heightInBlock == 0) {
+            lastEntranceToBlock = node;
+            memoization.clear();
+        }
+
+        Block * block = blocks[blockID];
+
+        node->block = block;
+        if(node->levelInBlock == block->blockSize - 1){//if the last node in block
+            block->tpWay[node] = pair<Leaf *, unordered_map<int,int>>(lastEntranceToBlock, memoization);
+        }
+        for(int i = 0; i < node->connections.size(); i ++){
+            if(node->connections.at(i) != node->parentPath){
+                Leaf * child = node->connections.at(i)->child;
+                queue.push(child);
+            }
         }
     }
 }
 
+unordered_map<int, int> countTheWayToTheRoot(Leaf * node){
+    unordered_map<int, int> toys;
+    while(node->parentPath != nullptr){
+        if(node->levelInBlock == node->block->blockSize - 1 && node->block->blockSize > 1){
+            node = node->block->tpWay[node].first;
+            if(unordered_map<int, int>::iterator it = node->block->tpWay[node].second.begin(); it != node->block->tpWay[node].second.end()){
+                int toyType = it->first;
+                int count = it->second;
+                unordered_map<int, int>::iterator it2 = toys.find(toyType);
+                if(it2 != toys.end()){
+                    it2->second += count;
+                }else{
+                    toys[toyType] = count;
+                }
+            }
+            continue;
+        }
+        unordered_map<int, int>::iterator it = toys.find(node->parentPath->toyType);
+        if(it != toys.end()) {
+            it->second ++;
+        }
+        else{
+            toys[node->parentPath->toyType] = 1;
+        }
+        node = node->parentPath->parent;
+    }
+    return toys;
+}
+
+void updateNodeParentPath(Leaf * node){
+    Block * block = node->block;
+    node->levelInBlock;
+}
+
 int main() {
+    time_t start, end;
+    time(&start);
+    ios_base::sync_with_stdio(false);
+
     string line;
     getline(cin, line);
     vector<string> args = split(line, ' ');
     int townsCount = stoi(args[0]);
     int kindsOfToys = stoi(args[1]);
-    int requests = stoi(args[2]);
+    int requestsCount = stoi(args[2]);
     vector <Leaf * > towns;
     vector <Connection * > streets;
     for(int i = 0 ; i < townsCount; i ++){
@@ -163,16 +218,29 @@ int main() {
     }
 
     int blockSize = sqrt(height);
-    int blocksCount = (height / blockSize) + (bool)(height % blockSize);
+    int blocksCount = (height / blockSize) + 1;
     vector<Block *> blocks;
     for(int i = 0; i < blocksCount; i ++){
         blocks.push_back(new Block(i, blockSize));
     }
-    //cout<<blocksCount<<" bS = "<<blockSize<<endl;
     blockPropagation(rootTown, blocks);
 
+    for(int i = 0; i < requestsCount; i ++){
+        getline(cin, line);
+        args = split(line, ' ');
+        char request = args[0][0];
+        if(request == 'Z'){
+            Leaf * targetTown = towns.at(stoi(args[1]) - 1);
+            cout<<countTheWayToTheRoot(targetTown).size()<<"\n";
+        }
+        else if(request == 'B'){
+            Connection * targetStreet = streets.at(stoi(args[1]) - 1);
+            int newToy = stoi(args[2]) - 1;
+        }
+    }
 
 
-
+    time(&end);
+    cout << "execution time = " << double(end - start);
     return 0;
 }
