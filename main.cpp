@@ -9,6 +9,7 @@
 #include <queue>
 using namespace std;
 struct Leaf;
+struct Block;
 struct Connection{
     Leaf * l1;
     Leaf * l2;
@@ -40,8 +41,27 @@ struct Leaf{
     int firstOccurrenceInEuler = -1;
     int lastOccurrenceInEuler;
 
+    Block * block;
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
+    }
+};
+struct Block{
+    int ID; //the number of the block starting from top
+    int blockSize;
+
+    int levelInTreeOfLowestFloor;
+    int levelInTreeOfHighestFloor;
+
+   // set<Leaf *> lowestFloor; // looking from the top
+   //  set<Leaf *> highestFloor; // looking from the bottom
+
+    map<Leaf *, map<int,int>> highestFloorMemoization; //the memoization and the leaf that is entered
+    Block(int id, int s){
+        this->ID = id;
+        this->blockSize = s;
+        levelInTreeOfLowestFloor = (blockSize) * ID;
+        levelInTreeOfHighestFloor = levelInTreeOfLowestFloor + (blockSize - 1);
     }
 };
 bool belongsToSubTree(Leaf * root, Leaf * node){
@@ -83,17 +103,27 @@ void propagateParent(Leaf * root){
     }
 }
 
-struct Block{
-    int ID; //the number of the block starting from top
-    int height;
+void blockPropagation(Leaf * node, vector<Block *> &blocks){
+    int levelInTree = node->levelInTree;
+    int blockHeight = blocks.at(0)->blockSize;
+    int blockID = levelInTree / blockHeight;
 
-    vector<Leaf *> floors; //toyType of the parent path, the town itself
-    vector<pair<map<int, int>, Leaf *>> entrance; //the memoization and the leaf that is entered
-    Block(int id, int height){
-         this->ID = id;
-         this->height = height;
+    Block * block = blocks[blockID];
+
+    node->block = block;
+
+
+    if(levelInTree == block->levelInTreeOfHighestFloor)
+        block->highestFloorMemoization[node];
+
+    //block->floors[levelInBlock].push_back(node);
+
+    for(int i = 0; i < node->connections.size(); i ++){
+        if(node->connections.at(i) != node->parentPath){
+            blockPropagation(node->connections.at(i)->child, blocks);
+        }
     }
-};
+}
 
 int main() {
     string line;
@@ -125,7 +155,6 @@ int main() {
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
 
-    int * tmp = new int(0);
     int height = 0;
     for(int i = 0; i < townsCount; i ++){
         Leaf * town = towns.at(i);
@@ -139,8 +168,8 @@ int main() {
     for(int i = 0; i < blocksCount; i ++){
         blocks.push_back(new Block(i, blockSize));
     }
-    cout<<blocksCount<<" bS = "<<blockSize<<endl;
-    cout<<height;
+    //cout<<blocksCount<<" bS = "<<blockSize<<endl;
+    blockPropagation(rootTown, blocks);
 
 
 
