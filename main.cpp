@@ -40,6 +40,8 @@ struct Leaf{
     int levelInTree;
 
     HeavyPath * heavyPath;
+    int idInHeavyPath = -1; // if our node is in heavy path - this will be the id of it counting from the top(lowest number floors)
+
     int subTreeSize = 0;
 
     void setParentPath(Connection * parentPath){
@@ -52,7 +54,7 @@ unordered_map<int,int> merge(unordered_map<int,int> m1, unordered_map<int,int> m
     unordered_map<int,int> result = bigger;
 
     for(unordered_map<int, int>::iterator it = smaller.begin(); it != smaller.end(); ++it){
-        if(result.find(it->first) == bigger.end()){
+        if(result.find(it->first) == result.end()){
             result[it->first] = it->second;
         }else{
             result[it->first] += it->second;
@@ -87,7 +89,11 @@ struct HeavyPath{
             floors.push_back(vector<BinaryNode *>());
             if(i == 0){
                 for(int j = 0; j < firstFloorLength; j ++ ){
-                    floors[0].push_back(new BinaryNode(nullptr, nullptr));
+                    BinaryNode * leaf = new BinaryNode(nullptr, nullptr);
+                    if(path[j] != nullptr){
+                        leaf->value[path[j]->parentPath->toyType] = 1;
+                    }
+                    floors[0].push_back(leaf);
                 }
             }
             else{
@@ -103,7 +109,7 @@ struct HeavyPath{
         }
         cout<<"";
     }
-    unordered_map<int,int> getSegment(int start, int end){
+    unordered_map<int,int> segmentQuery(int start, int end){
         if(start <= end) {
             cout << "error!";
         }
@@ -149,11 +155,15 @@ void findHeavyPaths(Leaf * node, vector<HeavyPath *> &heavyPaths){
                         node->heavyPath = p;
                         c->child->heavyPath = p;
 
+                        node->idInHeavyPath = 0;
+                        c->child->idInHeavyPath = 1;
+
                         heavyPaths.push_back(p);
                     } else {
                         HeavyPath *p = node->heavyPath;
                         p->path.push_back(c->child);
                         c->child->heavyPath = p;
+                        c->child->idInHeavyPath = p->path.size() - 1;
                     }
                 }
             }
