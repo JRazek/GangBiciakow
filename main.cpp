@@ -142,7 +142,7 @@ struct BlockContainer{
             }
         }
 
-        node->blockPaths = paths;
+        node->blockPaths.insert(node->blockPaths.end(), paths.begin(), paths.end());
 
         return paths;
     }
