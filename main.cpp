@@ -76,15 +76,17 @@ struct Path{
     }
 };
 unordered_map<int,int> merge(unordered_map<int,int> m1, unordered_map<int,int> m2){
-    for(unordered_map<int,int>::iterator it = m2.begin(); it != m2.end(); ++it){
-        unordered_map<int,int>::iterator it2 = m1.find(it2->first);
-        if(it2 == m1.end())
-            m1[it2->first] = 0;
-        m1[it2->first] ++;
+    unordered_map<int, int> smaller = m1.size() < m2.size() ? move(m1) : move(m2);
+    unordered_map<int, int> bigger = m1.size() < m2.size() ? move(m2) : move(m1);
+    for(unordered_map<int, int>::iterator it = smaller.begin(); it != smaller.end(); ++it){
+        if(bigger.find(it->first) == bigger.end()){
+            bigger[it->first] = it->second;
+        }else{
+            bigger[it->first] += it->second;
+        }
     }
-    return m1;
+    return bigger;
 }
-
 
 struct BlockContainer{
     vector<Block *> blocks;
@@ -120,9 +122,14 @@ struct BlockContainer{
         vector<Path *> paths;
         if(node->levelInBlock == blockSize - 1){
             Path * p = new Path(node->block, node);
-            p->lazyCounter[node->parentPath->toyType] = 1;
+            node->blockPaths.push_back(p);
+            p->path.push_back(node);
+            p->entry = node;
+            if(node->parentPath != nullptr)
+                p->lazyCounter[node->parentPath->toyType] = 1;
             return {p};
         }
+
         for(int i = 0 ; i < node->connections.size(); i ++){
             Connection * c = node->connections.at(i);
             if(c != node->parentPath) {
@@ -131,19 +138,17 @@ struct BlockContainer{
             }
         }
         for(int i = 0; i < paths.size(); i ++){
-            paths[i]->path.push_back(node);
-            if(node->parentPath != nullptr){
-                if(paths[i]->lazyCounter.find(node->parentPath->toyType) == paths[i]->lazyCounter.end()) {
-                    paths[i]->lazyCounter[node->parentPath->toyType] = 1;
-                }
-                else {
-                    paths[i]->lazyCounter[node->parentPath->toyType]++;
+            Path * p = paths[i];
+            p->path.push_back(node);
+            if(node->parentPath != nullptr) {
+                if (p->lazyCounter.find(node->parentPath->toyType) == p->lazyCounter.end()) {
+                    p->lazyCounter[node->parentPath->toyType] = 1;
+                } else {
+                    p->lazyCounter[node->parentPath->toyType]++;
                 }
             }
+            node->blockPaths.push_back(p);
         }
-
-        node->blockPaths.insert(node->blockPaths.end(), paths.begin(), paths.end());
-
         return paths;
     }
 };
@@ -183,12 +188,25 @@ void propagateParent(Leaf * root){
     }
 }
 unordered_map<int, int> countTheWayToTheRoot(Leaf * node){
+    unordered_map<int,int> memo;
     while (node->parentPath != nullptr){
-        if(node->levelInBlock == node->block->blockContainer->blockSize - 1){
-            cout<<"here";
+        if(node->levelInBlock == node->block->blockContainer->blockSize - 1 && node->block->blockContainer->blockSize > 1){//in the case if block is height 1 and inf loop occurs
+            Path * path = node->blockPaths[0];//there must be only one path in the node thats the entrance to the block
+            node = path->escape;
+
+            memo = move(merge(path->lazyCounter, memo));
         }
-        node = node->parentPath->parent;
+        else {
+            if(memo.find(node->parentPath->toyType) == memo.end()){
+                memo[node->parentPath->toyType] = 1;
+            }
+            else{
+                memo[node->parentPath->toyType] ++;
+            }
+            node = node->parentPath->parent;
+        }
     }
+    return memo;
 }
 
 void updateNodeParentPath(Connection * conn, int newToy){
@@ -272,8 +290,6 @@ int main() {
             updateNodeParentPath(targetStreet, newToy);
         }
     }
-
-    cout << towns[1000]->blockPaths.size() << "\n";
 
     time(&end);
     cout << "execution time = " << double(end - start);
