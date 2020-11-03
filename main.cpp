@@ -74,10 +74,21 @@ struct HeavyPath{
         BinaryNode * left;
         BinaryNode * right;
 
+        int rangeMin;
+        int rangeMax;
+
         unordered_map<int,int> value;
         BinaryNode(BinaryNode * l, BinaryNode * r){
             this->left = l;
             this->right = r;
+            if(l != nullptr && r != nullptr){
+                this->rangeMin = l->rangeMin;
+                this->rangeMax = r->rangeMax;
+            }
+        }
+        BinaryNode(int range){
+            this->rangeMin = range;
+            this->rangeMax = range;
         }
     };
     vector< vector< BinaryNode*> > floors;
@@ -89,7 +100,7 @@ struct HeavyPath{
             floors.push_back(vector<BinaryNode *>());
             if(i == 0){
                 for(int j = 0; j < firstFloorLength; j ++ ){
-                    BinaryNode * leaf = new BinaryNode(nullptr, nullptr);
+                    BinaryNode * leaf = new BinaryNode(j);
                     if(path[j] != nullptr){
                         leaf->value[path[j]->parentPath->toyType] = 1;
                     }
@@ -107,12 +118,9 @@ struct HeavyPath{
                 }
             }
         }
-        cout<<"";
     }
-    unordered_map<int,int> segmentQuery(int start, int end){
-        if(start <= end) {
-            cout << "error!";
-        }
+    unordered_map<int,int> segmentQuery(int min, int max){
+
     }
 };
 
