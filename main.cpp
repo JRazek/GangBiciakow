@@ -266,8 +266,8 @@ int differentToysCount(Leaf * node){
 }
 
 int main() {
-    time_t start, end;
-    time(&start);
+    //time_t start, end;
+    //time(&start);
     ios_base::sync_with_stdio(false);
 
     string line;
@@ -336,9 +336,9 @@ int main() {
         }
     }
 
-    pair<int,int> t = commonPart(make_pair(0,10), make_pair(3,11));
+    //pair<int,int> t = commonPart(make_pair(0,10), make_pair(3,11));
 
-    time(&end);
-    cout << "execution time = " << double(end - start);
+    //time(&end);
+    //cout << "execution time = " << double(end - start);
     return 0;
 }
