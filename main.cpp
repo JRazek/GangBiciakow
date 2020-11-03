@@ -64,7 +64,7 @@ unordered_map<int,int> merge(unordered_map<int,int> m1, unordered_map<int,int> m
 }
 pair<int,int> commonPart(pair<int,int> r1, pair<int,int> r2){
     int min = r1.first > r2.first ? r1.first : r2.first;
-    int max = r1.second > r2.second ? r1.second : r2.second;
+    int max = r1.second < r2.second ? r1.second : r2.second;
     return pair<int,int>(min, max);
 }
 struct HeavyPath{
@@ -104,7 +104,7 @@ struct HeavyPath{
             if(i == 0){
                 for(int j = 0; j < firstFloorLength; j ++ ){
                     BinaryNode * leaf = new BinaryNode(j);
-                    if(path[j] != nullptr){
+                    if(j < path.size()){
                         leaf->value[path[j]->parentPath->toyType] = 1;
                     }
                     floors[0].push_back(leaf);
@@ -116,6 +116,8 @@ struct HeavyPath{
                     BinaryNode * leftChild = floors[i - 1][2 * j];
                     BinaryNode * rightChild = floors[i - 1][2 * j + 1];
                     BinaryNode * parent = new BinaryNode(leftChild, rightChild);
+                    leftChild->parent = parent;
+                    rightChild->parent = parent;
                     parent->value = merge(leftChild->value, rightChild->value);
                     floors[i].push_back(parent);
                 }
@@ -135,19 +137,34 @@ struct HeavyPath{
         else{
             pair<int,int> commonLeft = commonPart(node->left->range, range);
             pair<int,int> commonRight = commonPart(node->right->range, range);
-            if(commonLeft.first <= commonLeft.second){
+            if(commonLeft.first <= commonLeft.second){//this is checking if the common part exists
                 toys = merge(toys, rangeQuery(commonLeft, node->left));
             }
-            if(commonRight.first <= commonRight.second){
+            if(commonRight.first <= commonRight.second){//this is checking if the common part exists
                 toys = merge(toys, rangeQuery(commonRight, node->right));
             }
         }
         return toys;
     }
-    void updateValue(int nodeID, int newToy){
-        int oldToy = this->path[nodeID]->parentPath->toyType;
-        this->path[nodeID]->parentPath->toyType = newToy;
-        //perform query here!
+    void updateValue(Leaf * node, int newToy){
+        int oldToy = this->path[node->idInHeavyPath]->parentPath->toyType;
+        if(oldToy != newToy) {
+            this->path[node->idInHeavyPath]->parentPath->toyType = newToy;
+            BinaryNode * binaryNode = node->heavyPath->floors.at(0).at(node->idInHeavyPath);
+            while (binaryNode->parent != nullptr){
+                if(binaryNode->value[oldToy] == 1){
+                    binaryNode->value.erase(oldToy);
+                }else{
+                    binaryNode->value[oldToy] --;
+                }
+                if(binaryNode->value.find(newToy) == binaryNode->value.end()){
+                    binaryNode->value[newToy] = 1;
+                }else{
+                    binaryNode->value[newToy] ++;
+                }
+                binaryNode = binaryNode->parent;
+            }
+        }
     }
 
 };
@@ -176,7 +193,7 @@ int countSubTreeSizes(Leaf * node){
     return node->subTreeSize;
 }
 
-void findHeavyPaths(Leaf * node, vector<HeavyPath *> &heavyPaths){
+void findHeavyPaths(Leaf * node, vector<HeavyPath *> * heavyPaths){
     int edgeValue = node->subTreeSize / 2;
     for(int i = 0 ; i < node->connections.size(); i ++){
         Connection * c = node->connections.at(i);
@@ -184,7 +201,7 @@ void findHeavyPaths(Leaf * node, vector<HeavyPath *> &heavyPaths){
             if(c->child->subTreeSize > edgeValue){
                 if(node->parentPath != nullptr) {
                     if (node->heavyPath == nullptr) {
-                        HeavyPath *p = new HeavyPath();
+                        HeavyPath * p = new HeavyPath();
                         p->path.push_back(node);
                         p->path.push_back(c->child);
 
@@ -194,12 +211,11 @@ void findHeavyPaths(Leaf * node, vector<HeavyPath *> &heavyPaths){
                         node->idInHeavyPath = 0;
                         c->child->idInHeavyPath = 1;
 
-                        heavyPaths.push_back(p);
+                        heavyPaths->push_back(p);
                     } else {
-                        HeavyPath *p = node->heavyPath;
-                        p->path.push_back(c->child);
-                        c->child->heavyPath = p;
-                        c->child->idInHeavyPath = p->path.size() - 1;
+                        node->heavyPath->path.push_back(c->child);
+                        c->child->heavyPath = node->heavyPath;
+                        c->child->idInHeavyPath = node->heavyPath->path.size() - 1;
                     }
                 }
             }
@@ -229,12 +245,24 @@ void propagateParent(Leaf * root){
         }
     }
 }
-unordered_map<int, int> countTheWayToTheRoot(Leaf * node){
-
-}
-
-void updateNodeParentPath(Connection * conn, int newToy){
-
+int differentToysCount(Leaf * node){
+    unordered_map<int,int> toys;
+    while (node->parentPath != nullptr){
+        if(node->heavyPath != nullptr){
+            HeavyPath * p = node->heavyPath;
+            toys = merge(toys, p->rangeQuery(make_pair(0, node->idInHeavyPath)));
+            node = node->heavyPath->path.at(0);
+        }else {
+            int toy = node->parentPath->toyType;
+            if (toys.find(toy) == toys.end()) {
+                toys[toy] = 1;
+            } else {
+                toys[toy]++;
+            }
+        }
+        node = node->parentPath->parent;
+    }
+    return toys.size();
 }
 
 int main() {
@@ -280,6 +308,13 @@ int main() {
 
     int blockSize = sqrt(height);
     int blocksCount = (height / blockSize) + 1;
+    countSubTreeSizes(rootTown);
+    vector<HeavyPath *> * heavyPaths = new vector<HeavyPath *>();
+    findHeavyPaths(rootTown, heavyPaths);
+    for(int i = 0; i < heavyPaths->size(); i ++){
+        HeavyPath * h = heavyPaths->at(i);
+        h->preprocessSegmentTree();
+    }
 
     for(int i = 0; i < requestsCount; i ++){
         getline(cin, line);
@@ -287,20 +322,22 @@ int main() {
         char request = args[0][0];
         if(request == 'Z'){
             Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-          //  cout<<countTheWayToTheRoot(targetTown).size()<<"\n";
+            cout<<differentToysCount(targetTown)<<"\n";
         }
         else if(request == 'B'){
             Connection * targetStreet = streets.at(stoi(args[1]) - 1);
             int newToy = stoi(args[2]) - 1;
-            updateNodeParentPath(targetStreet, newToy);
+            if(targetStreet->child->heavyPath != nullptr) {
+                targetStreet->child->heavyPath->updateValue(targetStreet->child, newToy);
+            }
+            else{
+                targetStreet->toyType = newToy;
+            }
         }
     }
-    countSubTreeSizes(rootTown);
-    vector<HeavyPath *> heavyPaths;
-    findHeavyPaths(rootTown, heavyPaths);
-    for(auto h : heavyPaths){
-        h->preprocessSegmentTree();
-    }
+
+    pair<int,int> t = commonPart(make_pair(0,10), make_pair(3,11));
+
     time(&end);
     cout << "execution time = " << double(end - start);
     return 0;
