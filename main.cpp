@@ -10,9 +10,7 @@
 #include <queue>
 using namespace std;
 struct Leaf;
-struct Path;
-struct BlockContainer;
-struct Block;
+struct HeavyPath;
 struct Connection{
     Leaf * l1;
     Leaf * l2;
@@ -39,119 +37,79 @@ struct Leaf{
     Connection * parentPath;
     vector<Connection *> connections;
     int id;
-    int eulerTourID;
     int levelInTree;
 
-    vector<Path *> blockPaths;
-    Block * block;
-
-    int levelInBlock;
+    HeavyPath * heavyPath;
+    int subTreeSize = 0;
 
     void setParentPath(Connection * parentPath){
         this->parentPath = parentPath;
     }
 };
-
-struct Block{
-    int ID; //the number of the block starting from top
-
-    int levelInTreeOfLowestFloor;
-    int levelInTreeOfHighestFloor;
-    BlockContainer * blockContainer;
-
-    Block(BlockContainer * bC, int id){
-        this->blockContainer = bC;
-        this->ID = id;
-    }
-};
-struct Path{
-    Block * block;
-    vector<Leaf *> path;//from lower to higher
-    Leaf * entry;   //the highest node
-    Leaf * escape; // the lowest node
-    unordered_map<int,int> lazyCounter;
-    Path(Block * b, Leaf * entry){
-        this->block = b;
-        this->entry = entry;
-    }
-};
 unordered_map<int,int> merge(unordered_map<int,int> m1, unordered_map<int,int> m2){
     unordered_map<int, int> smaller = m1.size() < m2.size() ? move(m1) : move(m2);
     unordered_map<int, int> bigger = m1.size() < m2.size() ? move(m2) : move(m1);
+    unordered_map<int,int> result = bigger;
+
     for(unordered_map<int, int>::iterator it = smaller.begin(); it != smaller.end(); ++it){
-        if(bigger.find(it->first) == bigger.end()){
-            bigger[it->first] = it->second;
+        if(result.find(it->first) == bigger.end()){
+            result[it->first] = it->second;
         }else{
-            bigger[it->first] += it->second;
+            result[it->first] += it->second;
         }
     }
-    return bigger;
+    return result;
 }
+struct HeavyPath{
+    vector<Leaf *> path;
+    /**
+     * first vector stands for floor num(counting from the bottom), second for nodes in each floor.
+     * the map is the memoization on each segment of the toys
+     */
+    struct BinaryNode{
+        BinaryNode * parent;
 
-struct BlockContainer{
-    vector<Block *> blocks;
+        BinaryNode * left;
+        BinaryNode * right;
 
-    int blockSize;
-    BlockContainer(int s){
-        blockSize = s;
-    }
-    void blockPropagation(Leaf * root){
-        stack<Leaf *> queue;
-        queue.push(root);
-        while (!queue.empty()){
-            Leaf * node = queue.top();
-            queue.pop();
-            vector<Path *> paths = findPaths(node);
-            for(int i = 0; i < paths.size(); i ++){
-                Path * p = paths[i];
-                p->escape = p->path[p->path.size() - 1];
-                for(int j = 0 ; j < p->entry->connections.size(); j ++){
-                    if(p->entry->connections[j] != p->entry->parentPath){
-                        queue.push(p->entry->connections[j]->child);
-                    }
-                }
-            }
+        unordered_map<int,int> value;
+        BinaryNode(BinaryNode * l, BinaryNode * r){
+            this->left = l;
+            this->right = r;
         }
     };
-    vector<Path *> findPaths(Leaf * node){
-        int blockID = node->levelInTree / blockSize;
-        int heightInBlock = node->levelInTree % blockSize;
-        node->block = blocks[blockID];
-        node->levelInBlock = heightInBlock;
-
-        vector<Path *> paths;
-        if(node->levelInBlock == blockSize - 1){
-            Path * p = new Path(node->block, node);
-            node->blockPaths.push_back(p);
-            p->path.push_back(node);
-            p->entry = node;
-            if(node->parentPath != nullptr)
-                p->lazyCounter[node->parentPath->toyType] = 1;
-            return {p};
-        }
-
-        for(int i = 0 ; i < node->connections.size(); i ++){
-            Connection * c = node->connections.at(i);
-            if(c != node->parentPath) {
-                vector<Path *> tmp = findPaths(node->connections[i]->child);
-                paths.insert(paths.end(), tmp.begin(), tmp.end());
-            }
-        }
-        for(int i = 0; i < paths.size(); i ++){
-            Path * p = paths[i];
-            p->path.push_back(node);
-            if(node->parentPath != nullptr) {
-                if (p->lazyCounter.find(node->parentPath->toyType) == p->lazyCounter.end()) {
-                    p->lazyCounter[node->parentPath->toyType] = 1;
-                } else {
-                    p->lazyCounter[node->parentPath->toyType]++;
+    vector< vector< BinaryNode*> > floors;
+    void preprocessSegmentTree(){
+        float logVal = log2(path.size());
+        int height = logVal + (bool) logVal + 1;
+        int firstFloorLength = pow(2, height - 1);
+        for(int i = 0; i < height; i ++){
+            floors.push_back(vector<BinaryNode *>());
+            if(i == 0){
+                for(int j = 0; j < firstFloorLength; j ++ ){
+                    floors[0].push_back(new BinaryNode(nullptr, nullptr));
                 }
             }
-            node->blockPaths.push_back(p);
+            else{
+                int currFloorLength = firstFloorLength / pow(2, i);
+                for(int j = 0; j < currFloorLength; j ++ ){
+                    BinaryNode * leftChild = floors[i - 1][2 * j];
+                    BinaryNode * rightChild = floors[i - 1][2 * j + 1];
+                    BinaryNode * parent = new BinaryNode(leftChild, rightChild);
+                    parent->value = merge(leftChild->value, rightChild->value);
+                    floors[i].push_back(parent);
+                }
+            }
         }
-        return paths;
+        cout<<"";
+    }
+    unordered_map<int,int> getSegment(int start, int end){
+        if(start <= end) {
+            cout << "error!";
+        }
     }
 };
+
 vector<string> split(string str, char divider){
     vector<string> result;
 
@@ -164,6 +122,44 @@ vector<string> split(string str, char divider){
         }
     }
     return result;
+}
+int countSubTreeSizes(Leaf * node){
+    for(int i = 0 ; i < node->connections.size(); i ++){
+        Connection * c = node->connections.at(i);
+        if(c != node->parentPath) {
+            node->subTreeSize += countSubTreeSizes(node->connections[i]->child);
+        }
+    }
+    node->subTreeSize += 1;
+    return node->subTreeSize;
+}
+
+void findHeavyPaths(Leaf * node, vector<HeavyPath *> &heavyPaths){
+    int edgeValue = node->subTreeSize / 2;
+    for(int i = 0 ; i < node->connections.size(); i ++){
+        Connection * c = node->connections.at(i);
+        if(c != node->parentPath) {
+            if(c->child->subTreeSize > edgeValue){
+                if(node->parentPath != nullptr) {
+                    if (node->heavyPath == nullptr) {
+                        HeavyPath *p = new HeavyPath();
+                        p->path.push_back(node);
+                        p->path.push_back(c->child);
+
+                        node->heavyPath = p;
+                        c->child->heavyPath = p;
+
+                        heavyPaths.push_back(p);
+                    } else {
+                        HeavyPath *p = node->heavyPath;
+                        p->path.push_back(c->child);
+                        c->child->heavyPath = p;
+                    }
+                }
+            }
+            findHeavyPaths(c->child, heavyPaths);
+        }
+    }
 }
 void propagateParent(Leaf * root){
     stack<Leaf *> queue;
@@ -188,44 +184,11 @@ void propagateParent(Leaf * root){
     }
 }
 unordered_map<int, int> countTheWayToTheRoot(Leaf * node){
-    unordered_map<int,int> memo;
-    while (node->parentPath != nullptr){
-        if(node->levelInBlock == node->block->blockContainer->blockSize - 1 && node->block->blockContainer->blockSize > 1){//in the case if block is height 1 and inf loop occurs
-            Path * path = node->blockPaths[0];//there must be only one path in the node thats the entrance to the block
-            node = path->escape;
 
-            memo = move(merge(path->lazyCounter, memo));
-        }
-        else {
-            if(memo.find(node->parentPath->toyType) == memo.end()){
-                memo[node->parentPath->toyType] = 1;
-            }
-            else{
-                memo[node->parentPath->toyType] ++;
-            }
-            node = node->parentPath->parent;
-        }
-    }
-    return memo;
 }
 
 void updateNodeParentPath(Connection * conn, int newToy){
-    int oldToy = conn->toyType;
-    Leaf * node = conn->child;
-    conn->toyType = newToy;
-    if(oldToy != newToy) {
-        for (int i = 0; i < node->blockPaths.size(); i++) {
-            Path * p = node->blockPaths[i];
-            p->lazyCounter[oldToy] --;
-            if(p->lazyCounter[oldToy] == 0) {
-                p->lazyCounter.erase(oldToy);
-            }
-            if(p->lazyCounter.find(newToy) == p->lazyCounter.end())
-                p->lazyCounter[newToy] = 1;
-            else
-                p->lazyCounter[newToy] ++;
-        }
-    }
+
 }
 
 int main() {
@@ -271,18 +234,14 @@ int main() {
 
     int blockSize = sqrt(height);
     int blocksCount = (height / blockSize) + 1;
-    BlockContainer * blockContainer = new BlockContainer(blockSize);
-    for(int i = 0; i < blocksCount; i ++){
-        blockContainer->blocks.push_back(new Block(blockContainer, i));
-    }
-    blockContainer->blockPropagation(rootTown);
+
     for(int i = 0; i < requestsCount; i ++){
         getline(cin, line);
         args = split(line, ' ');
         char request = args[0][0];
         if(request == 'Z'){
             Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-            cout<<countTheWayToTheRoot(targetTown).size()<<"\n";
+          //  cout<<countTheWayToTheRoot(targetTown).size()<<"\n";
         }
         else if(request == 'B'){
             Connection * targetStreet = streets.at(stoi(args[1]) - 1);
@@ -290,7 +249,12 @@ int main() {
             updateNodeParentPath(targetStreet, newToy);
         }
     }
-
+    countSubTreeSizes(rootTown);
+    vector<HeavyPath *> heavyPaths;
+    findHeavyPaths(rootTown, heavyPaths);
+    for(auto h : heavyPaths){
+        h->preprocessSegmentTree();
+    }
     time(&end);
     cout << "execution time = " << double(end - start);
     return 0;
