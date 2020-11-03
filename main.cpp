@@ -62,6 +62,11 @@ unordered_map<int,int> merge(unordered_map<int,int> m1, unordered_map<int,int> m
     }
     return result;
 }
+pair<int,int> commonPart(pair<int,int> r1, pair<int,int> r2){
+    int min = r1.first > r2.first ? r1.first : r2.first;
+    int max = r1.second > r2.second ? r1.second : r2.second;
+    return pair<int,int>(min, max);
+}
 struct HeavyPath{
     vector<Leaf *> path;
     /**
@@ -74,24 +79,22 @@ struct HeavyPath{
         BinaryNode * left;
         BinaryNode * right;
 
-        int rangeMin;
-        int rangeMax;
+        pair<int,int> range;
 
         unordered_map<int,int> value;
         BinaryNode(BinaryNode * l, BinaryNode * r){
             this->left = l;
             this->right = r;
             if(l != nullptr && r != nullptr){
-                this->rangeMin = l->rangeMin;
-                this->rangeMax = r->rangeMax;
+                this->range = pair<int,int>(l->range.first, r->range.second);
             }
         }
         BinaryNode(int range){
-            this->rangeMin = range;
-            this->rangeMax = range;
+            this->range = pair<int,int>(range, range);
         }
     };
     vector< vector< BinaryNode*> > floors;
+    BinaryNode * root;
     void preprocessSegmentTree(){
         float logVal = log2(path.size());
         int height = logVal + (bool) logVal + 1;
@@ -117,11 +120,36 @@ struct HeavyPath{
                     floors[i].push_back(parent);
                 }
             }
+            if(i == height - 1){
+                this->root = floors[height - 1][0];
+            }
         }
     }
-    unordered_map<int,int> segmentQuery(int min, int max){
-
+    unordered_map<int,int> rangeQuery(pair<int,int> range, BinaryNode * node = nullptr){
+        unordered_map<int,int> toys;
+        if(node == nullptr)
+            node = root;
+        if(node->range.first == range.first && node->range.second == range.second){
+            return node->value;
+        }
+        else{
+            pair<int,int> commonLeft = commonPart(node->left->range, range);
+            pair<int,int> commonRight = commonPart(node->right->range, range);
+            if(commonLeft.first <= commonLeft.second){
+                toys = merge(toys, rangeQuery(commonLeft, node->left));
+            }
+            if(commonRight.first <= commonRight.second){
+                toys = merge(toys, rangeQuery(commonRight, node->right));
+            }
+        }
+        return toys;
     }
+    void updateValue(int nodeID, int newToy){
+        int oldToy = this->path[nodeID]->parentPath->toyType;
+        this->path[nodeID]->parentPath->toyType = newToy;
+        //perform query here!
+    }
+
 };
 
 vector<string> split(string str, char divider){
