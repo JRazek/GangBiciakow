@@ -259,11 +259,15 @@ struct SegmentTree{
             node = getParent(node->id);
         }
     }
-    void differentFromLeafToRoot(int townID){
-        Range * r = new Range(0, townID);
+    int differentFromLeafToRoot(int leafNum){
+        Range * r = new Range(0, leafNum);
         vector<BinaryNode *> nodes = rangeQuery(r);
         delete r;
-
+        unordered_map<int,int> res;
+        for(auto n : nodes){
+            res = addValues(res, n->values);
+        }
+        return res.size();
     }
 };
 
@@ -392,7 +396,7 @@ int main() {
         char request = args[0][0];
         if(request == 'Z'){
             Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-
+            cout<<segmentTree.differentFromLeafToRoot(targetTown->parentPath->positiveNumberInEulerTour)<<"\n";
         }
         else if(request == 'B'){
             Connection * targetStreet = streets.at(stoi(args[1]) - 1);
