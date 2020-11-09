@@ -5,7 +5,6 @@
 #include <vector>
 #include <math.h>
 
-//knowledge source: https://www.youtube.com/watch?v=iOz1UJPdcTQ
 using namespace std;
 struct Leaf;
 struct SparseTableMin{
@@ -43,7 +42,6 @@ struct SparseTableMin{
         }
     }
 };
-
 struct Range{
     int min;
     int max;
@@ -65,6 +63,9 @@ struct Connection{
     int ID;
     Leaf * parent;
     Leaf * child;
+
+    int positiveNumberInEulerTour;
+    int negativeNumberInEulerTour;
     Connection(Leaf * l1, Leaf * l2, int streetID, int toyType){
         this->l1 = l1;
         this->l2 = l2;
@@ -96,7 +97,24 @@ struct Leaf{
         this->parentPath = parentPath;
     }
 };
+unordered_map <int,int> addValues(unordered_map<int,int> &m1, unordered_map<int,int> &m2){
+    bool firstSmaller = m1.size() < m2.size() ? true : false;
+    unordered_map <int,int> bigger = firstSmaller ? m1 : m2;
 
+    unordered_map <int,int> * smaller =  firstSmaller ? &m2 : &m1;
+
+    for(unordered_map <int,int>::iterator it = smaller->begin(); it != smaller->end(); ++it){
+        int toyType = it->first;
+        int quantity = it->second;
+        if(bigger.find(toyType) == bigger.end()){
+            bigger[toyType] = quantity;
+        }else{
+            bigger[toyType] += quantity;
+        }
+    }
+   // free(smaller);
+    return bigger;
+}
 void eulerTourIndexing(Leaf * node, int &index, vector<Leaf *> &tourTownOrder,  int level = 0){
     node->eulerTourID = index;
     node->levelInTree = level;
@@ -128,16 +146,18 @@ struct SegmentTree{
         }
     };
     vector< BinaryNode * > nodes;
-    vector<Leaf *> eulerTour;
+    vector<pair<Connection *, bool>> eulerTour;
 
     int firstFloorSize;
     int height;
-    SegmentTree(vector<Leaf *> eulerTour){
+    SegmentTree(vector<pair<Connection *, bool>> eulerTour){
         this->eulerTour = eulerTour;//if not enough space jus add &
         float logVal = log2(eulerTour.size());
         this->firstFloorSize = pow(2, (int)logVal + (bool)((int)logVal != logVal));
         this->height = log2(firstFloorSize) + 1;
+        this->eulerTour = eulerTour;
         buildTree();
+        preprocess();
     }
 
     void buildTree(){
@@ -155,6 +175,32 @@ struct SegmentTree{
             n->range->min = getChild(i, true)->range->min;
             n->range->max = getChild(i, false)->range->max;
         }
+        for(int i = 0 ; i < firstFloorSize; i ++){
+            BinaryNode * n = nodes[i +  pow(2, height - 1) - 1];
+            n->range->min = i;
+            n->range->max = i;
+        }
+        for(int i = nodesCount - 1 - firstFloorSize; i >= 0; i --){
+            BinaryNode * n = nodes[i];
+            n->range->min = getChild(i, true)->range->min;
+            n->range->max = getChild(i, false)->range->max;
+        }
+    }
+
+    void preprocess(){
+        for(int i = 0; i < eulerTour.size(); i++){
+            int nodeID = i + pow(2, height - 1) - 1;
+            BinaryNode * n = nodes[nodeID];
+            Connection * correspondingStreet = eulerTour[i].first;
+            bool positive = eulerTour[i].second;
+            n->values[correspondingStreet->toyType] = positive;
+        }
+        for(int i = 0; i < nodes.size()  - firstFloorSize; i ++){
+            BinaryNode * node = nodes[i];
+            BinaryNode * leftChild = getChild(node->id, true);
+            BinaryNode * rightChild = getChild(node->id, false);
+            node->values = addValues(leftChild->values, rightChild->values);
+        }
     }
 
     BinaryNode * getChild(int binaryNodeID, bool left){
@@ -165,6 +211,7 @@ struct SegmentTree{
     }
     vector<BinaryNode *> rangeQuery(Range * range, int nodeID = 0){
         if(range == nullptr){
+            cout<<"error";
             return vector<BinaryNode *>();
         }
         BinaryNode * parent = nodes[nodeID];
@@ -197,6 +244,26 @@ struct SegmentTree{
         for(auto n : nodes){
             delete n;
         }
+    }
+    void updateLeaf(int leafNum, int oldToyType, int newToyType, bool positive){
+        BinaryNode * node = nodes[leafNum + pow(2, height - 1) - 1];
+        //different behaviour to leaf!!!
+        while (true) {
+            node->values[oldToyType] += !positive;
+            if(node->values[oldToyType] == 0){
+                node->values.erase(oldToyType);
+            }
+            node->values[newToyType] = 1;
+            if(node == getParent(node->id))
+                break;
+            node = getParent(node->id);
+        }
+    }
+    void differentFromLeafToRoot(int townID){
+        Range * r = new Range(0, townID);
+        vector<BinaryNode *> nodes = rangeQuery(r);
+        delete r;
+
     }
 };
 
@@ -295,10 +362,15 @@ int main() {
 
 
         if(node->parentPath != nullptr && node->parentPath->parent == tourTownOrder[i - 1]){
-            tourStreetOrder.push_back(make_pair(node->parentPath, true));
-        }
-        if(i > 0 && tourTownOrder[i - 1]->parentPath != nullptr && tourTownOrder[i - 1]->parentPath->parent == node){
-            tourStreetOrder.push_back(make_pair(tourTownOrder[i - 1]->parentPath, false));
+            Connection * c = node->parentPath;
+            tourStreetOrder.push_back(make_pair(c, true));
+            c->positiveNumberInEulerTour = i;
+        }else if(i > 0 && tourTownOrder[i - 1]->parentPath != nullptr && tourTownOrder[i - 1]->parentPath->parent == node){
+            Connection * c = tourTownOrder[i - 1]->parentPath;
+            tourStreetOrder.push_back(make_pair(c, false));
+            c->negativeNumberInEulerTour = i;
+        }else{
+            cout<<"";
         }
 
 
@@ -309,7 +381,8 @@ int main() {
     }
 
 
-    SegmentTree segmentTree(tourTownOrder);
+    SegmentTree segmentTree(tourStreetOrder);
+
 
     cout<<"";
 
@@ -324,7 +397,12 @@ int main() {
         else if(request == 'B'){
             Connection * targetStreet = streets.at(stoi(args[1]) - 1);
             int newToy = stoi(args[2]) - 1;
-
+            if(targetStreet->toyType != newToy){
+                int oldToyType = targetStreet->toyType;
+                targetStreet->toyType = newToy;
+                segmentTree.updateLeaf(targetStreet->positiveNumberInEulerTour, oldToyType, newToy, true);
+                segmentTree.updateLeaf(targetStreet->positiveNumberInEulerTour, oldToyType, newToy, false);
+            }
         }
     }
 
