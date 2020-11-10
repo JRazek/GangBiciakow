@@ -47,7 +47,6 @@ struct SparseTableMin{
 struct Range{
     int min;
     int max;
-    static vector<Range *> toDelete;
     Range(int min, int max){
         this->min = min;
         this->max = max;
@@ -99,8 +98,8 @@ struct Leaf{
 };
 struct Toy{
     int toyType;
-    int nextOccurrenceInEuler = 2147483647;
-    int prevOccurrenceInEuler = -1;
+    int nextOccurrenceInEuler = 2147483645;
+    int prevOccurrenceInEuler = -1; //isnt very needed and could be done without it but it doesnt matter and doesnt have to be updated.
 
     int positiveOccurrenceInEuler;
     int negativeOccurrenceInEuler;
@@ -110,7 +109,7 @@ struct Toy{
 };
 vector<Toy *> merge(const vector<Toy *> &v1, const vector<Toy *> &v2){
     int i = 0, j = 0, k = 0;
-    bool iOverload, jOverload = false;
+    bool iOverload = false, jOverload = false;
 
     vector<Toy *> merged;
     if(v1.empty()){merged = v2; return merged;}
@@ -138,24 +137,6 @@ vector<Toy *> merge(const vector<Toy *> &v1, const vector<Toy *> &v2){
         k++;
     }
     return merged;
-}
-unordered_map <int,int> addValues(unordered_map<int,int> &m1, unordered_map<int,int> &m2){
-    bool firstSmaller = m1.size() < m2.size() ? true : false;
-    unordered_map <int,int> bigger = firstSmaller ? m1 : m2;
-
-    unordered_map <int,int> * smaller =  firstSmaller ? &m2 : &m1;
-
-    for(unordered_map <int,int>::iterator it = smaller->begin(); it != smaller->end(); ++it){
-        int toyType = it->first;
-        int quantity = it->second;
-        if(bigger.find(toyType) == bigger.end()){
-            bigger[toyType] = quantity;
-        }else{
-            bigger[toyType] += quantity;
-        }
-    }
-   // free(smaller);
-    return bigger;
 }
 void eulerTourIndexing(Leaf * node, int &index, vector<pair<Connection *, bool>> &tourStreetOrder, int level = 0){
     node->eulerTourID = index;
@@ -237,7 +218,6 @@ struct SegmentTree{
             n->range->max = getChild(i, false)->range->max;
         }
     }
-
     void preprocess(){
         for(int i = 0; i < eulerTour.size(); i++){
             int nodeID = i + pow(2, height - 1) - 1;
@@ -309,6 +289,41 @@ struct SegmentTree{
         delete commonRight;
         delete commonLeft;
         return result;
+    }
+
+    int getUniqueElementsCount(int maxRoad){
+        Range * range = new Range(0, maxRoad);
+        vector<BinaryNode *> nodes = rangeQuery(range);
+        int uniqueSum = 0;
+        for(int i = 0; i < nodes.size(); i ++){
+            BinaryNode * n = nodes[i];
+            int smallerThan = n->range->max;
+            if(n->toys.size() > 0) {
+                int low = 0;
+                int high = n->toys.size() - 1;
+                int mid;
+                if(n->toys[0]->nextOccurrenceInEuler > smallerThan || n->toys[n->toys.size() - 1]->nextOccurrenceInEuler < smallerThan){
+                    uniqueSum += n->toys.size();
+                }
+                else {
+                    while (true) {
+                        mid = (low + high) / 2;
+                        if (low == high) {
+                            uniqueSum += low - n->toys.size() + 1;//change!
+                            break;
+                        }
+                        if (n->toys[mid]->nextOccurrenceInEuler < smallerThan) {
+                            low = mid + 1;
+                        }
+                        if (n->toys[mid]->nextOccurrenceInEuler > smallerThan) {
+                            high = mid - 1;
+                        }
+                    }
+                }
+            }
+        }
+        delete range;
+        return uniqueSum;
     }
     ~SegmentTree(){
         for(auto n : nodes){
@@ -442,6 +457,7 @@ int main() {
         }
     }
 
+    cout<<segmentTree.getUniqueElementsCount(4)<<"\n";
 
     for(Leaf * n : towns){
         delete n;
