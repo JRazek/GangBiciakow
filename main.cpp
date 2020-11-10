@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <vector>
 #include <math.h>
@@ -99,7 +100,7 @@ struct Leaf{
 struct Toy{
     int toyType;
     int nextOccurrenceInEuler = 2147483647;
-    int prevOccurrenceUnEuler = -1;
+    int prevOccurrenceInEuler = -1;
 
     int positiveOccurrenceInEuler;
     int negativeOccurrenceInEuler;
@@ -107,12 +108,13 @@ struct Toy{
         this->toyType = toyType;
     }
 };
-vector<int> merge(const vector<int> &v1, const vector<int> &v2){
+vector<Toy *> merge(const vector<Toy *> &v1, const vector<Toy *> &v2){
     int i = 0, j = 0, k = 0;
     bool iOverload, jOverload = false;
 
-    vector<int> merged;
-
+    vector<Toy *> merged;
+    if(v1.empty()){merged = v2; return merged;}
+    if(v2.empty()){merged = v1; return merged;}
     while(k != (v1.size() + v2.size())){
         int firstValue = 2147483647;
         int secondValue = 2147483647;
@@ -122,15 +124,15 @@ vector<int> merge(const vector<int> &v1, const vector<int> &v2){
             jOverload = true;
 
         if(!iOverload)
-            firstValue = v1[i];
+            firstValue = v1[i]->nextOccurrenceInEuler;
         if(!jOverload)
-            secondValue = v2[j];
+            secondValue = v2[j]->nextOccurrenceInEuler;
 
         if(firstValue < secondValue){
-            merged.push_back(firstValue);
+            merged.push_back(v1[i]);
             i++;
         }else{
-            merged.push_back(secondValue);
+            merged.push_back(v2[j]);
             j++;
         }
         k++;
@@ -159,16 +161,20 @@ void eulerTourIndexing(Leaf * node, int &index, vector<pair<Connection *, bool>>
     node->eulerTourID = index;
     node->levelInTree = level;
     index += 1;
-    if(node->parentPath != nullptr)
+    if(node->parentPath != nullptr) {
         tourStreetOrder.push_back(make_pair(node->parentPath, true));
+        node->parentPath->toy->positiveOccurrenceInEuler = level;
+    }
     for(int i = 0; i < node->connections.size(); i ++){
         if(node->connections.at(i) != node->parentPath){
             Connection * c = node->connections.at(i);
             eulerTourIndexing(c->child, index, tourStreetOrder, ++level);
         }
     }
-    if(node->parentPath != nullptr)
+    if(node->parentPath != nullptr) {
         tourStreetOrder.push_back(make_pair(node->parentPath, false));
+        node->parentPath->toy->negativeOccurrenceInEuler = level;
+    }
 
 }
 
@@ -177,7 +183,7 @@ struct SegmentTree{
         int id;
         Range * range;
 
-        unordered_map<int,int> negativeSet;//first stand for toyType second for quantity. The important thing is that it is not negative in map!
+        unordered_set<Toy *> negativeSet;//first stand for toyType second for quantity. The important thing is that it is not negative in map!
 
         vector<Toy *> toys; //sorted by the elements next occurrence
 
@@ -202,6 +208,7 @@ struct SegmentTree{
         this->eulerTour = eulerTour;
         buildTree();
         preprocess();
+        cout<<"";
     }
 
     void buildTree(){
@@ -236,21 +243,33 @@ struct SegmentTree{
             int nodeID = i + pow(2, height - 1) - 1;
             BinaryNode * n = nodes[nodeID];
             Connection * correspondingStreet = eulerTour[i].first;
+            Toy * toy = correspondingStreet->toy;
             bool positive = eulerTour[i].second;
             if(positive){
-                n->toys[0] = correspondingStreet->toy;
+                n->toys.push_back(toy);
             }else{
-                if(n->negativeSet.find(correspondingStreet->toy->toyType) == n->negativeSet.end()){
-                    n->negativeSet[correspondingStreet->toy->toyType] = 0;
-                }
-                n->negativeSet[correspondingStreet->toy->toyType] ++;
+                n->negativeSet.insert(toy);
             }
         }
-        for(int i = 0; i < nodes.size()  - firstFloorSize; i ++){
-            BinaryNode * node = nodes[i];
-            BinaryNode * leftChild = getChild(node->id, true);
-            BinaryNode * rightChild = getChild(node->id, false);
-            //this wont work!
+        for(int i = 0; i < nodes.size() - firstFloorSize; i ++){
+            int nodeID = nodes.size() - firstFloorSize - 1 - i;
+            BinaryNode * n = nodes[nodeID];
+            BinaryNode * leftChild = getChild(nodeID, true);
+            BinaryNode * rightChild = getChild(nodeID, false);
+            n->negativeSet.insert(leftChild->negativeSet.begin(), leftChild->negativeSet.end());
+            n->negativeSet.insert(rightChild->negativeSet.begin(), rightChild->negativeSet.end());
+            vector<Toy *> unDeletedToys = merge(leftChild->toys, rightChild->toys);
+
+            vector<Toy *> finalToys;
+            for(int i = 0 ; i < unDeletedToys.size(); i ++){
+                Toy * t = unDeletedToys[i];
+                if(n->negativeSet.find(t) == n->negativeSet.end()){
+                    finalToys.push_back(t);
+                }else{
+                    n->negativeSet.erase(t);
+                }
+            }
+            n->toys = finalToys;
         }
     }
 
@@ -386,33 +405,25 @@ int main() {
 
     int tmp = 0;
     eulerTourIndexing(rootTown, tmp, tourStreetOrder);
-    {
-        unordered_map<int, pair<Toy *, int>> prevOccurrence;//key for toyType, pair is for < the toy that we want to give the update to, the index of it so i can save it now>
-        for(int i = 0 ; i < tourStreetOrder.size(); i++){
-            Connection * street = tourStreetOrder[i].first;
-            bool positive = tourStreetOrder[i].second;
-            if(positive){
-                if (prevOccurrence.find(street->toy->toyType) != prevOccurrence.end()) {
-                    street->toy->prevOccurrenceUnEuler = prevOccurrence[street->toy->toyType].second;
-                    prevOccurrence[street->toy->toyType].first->nextOccurrenceInEuler = i;
+    {//assigning the next occurence of a toy in a euler tour. Omitting the negative ones.
+        unordered_map<int, pair<Toy *, int>> tmpMap;//key - toytype, <Toy itself, occurrence itself>
+        for(int  i = 0; i < tourStreetOrder.size(); i ++){
+            if(tourStreetOrder[i].second){
+                Connection * street = tourStreetOrder[i].first;
+                Toy * toy = street->toy;
+                if(tmpMap.find(toy->toyType) != tmpMap.end()){
+                    toy->prevOccurrenceInEuler = tmpMap[toy->toyType].second;
+                    tmpMap[toy->toyType].first->nextOccurrenceInEuler = i;
                 }
-                prevOccurrence[street->toy->toyType] = make_pair(street->toy, i);
+                tmpMap[toy->toyType] = make_pair(toy, i);
             }
         }
     }
 
 
-
     SegmentTree segmentTree(tourStreetOrder);
 
-    vector<int> v1 = {0,2,5,6,9,11,12};
-    vector<int> v2 = {1,3,5,7,9,11,20,30,40,50,70,100001};
-    vector<int> merged = merge(v1, v2);
-
     cout<<"\n";
-    for(int i : merged){
-        cout<<i<<" ";
-    }
     cout<<"\n";
 
     for(int i = 0; i < requestsCount; i ++){
