@@ -7,6 +7,7 @@
 
 using namespace std;
 struct Leaf;
+struct Toy;
 struct SparseTableMin{
     vector<int> values;
     vector<vector<int>*> sparseTable;
@@ -59,18 +60,18 @@ struct Range{
 struct Connection{
     Leaf * l1;
     Leaf * l2;
-    int toyType;
+    Toy * toy;
     int ID;
     Leaf * parent;
     Leaf * child;
 
     int positiveNumberInEulerTour;
     int negativeNumberInEulerTour;
-    Connection(Leaf * l1, Leaf * l2, int streetID, int toyType){
+    Connection(Leaf * l1, Leaf * l2, int streetID, Toy * toy){
         this->l1 = l1;
         this->l2 = l2;
         this->ID = streetID;
-        this->toyType = toyType;
+        this->toy = toy;
     }
     void setParent(Leaf * parent){//if true - the l1 else the l2
         if(l1 == parent || l2 == parent) {
@@ -79,6 +80,10 @@ struct Connection{
         }
         else
             cout<<"ERROR";
+    }
+    void changeToy(Toy * newToy){
+        delete toy;
+        toy = newToy;
     }
 };
 struct Leaf{
@@ -99,8 +104,11 @@ struct Leaf{
 };
 struct Toy{
     int toyType;
-    int nextToy;
-    int prevToy;
+    int nextOccurrenceInEuler = 2147483647;
+    int prevOccurrenceUnEuler = -1;
+    Toy(int toyType){
+        this->toyType = toyType;
+    }
 };
 vector<int> merge(const vector<int> &v1, const vector<int> &v2){
     int i = 0, j = 0, k = 0;
@@ -358,8 +366,8 @@ int main() {
         args = split(line, ' ');
         Leaf * town1 = towns[stoi(args[0]) - 1];
         Leaf * town2 = towns[stoi(args[1]) - 1];
-        int toyType = stoi(args[2]) - 1;
-        Connection * conn = new Connection(town1, town2, i, toyType);
+        Toy * toy = new Toy( stoi(args[2]) - 1);
+        Connection * conn = new Connection(town1, town2, i, toy);
         town1->connections.push_back(conn);
         town2->connections.push_back(conn);
         streets.push_back(conn);
@@ -376,20 +384,28 @@ int main() {
 
     eulerTourIndexing(rootTown, tmp, tourTownOrder);
 
+    unordered_map<int, pair<Toy *, int>> prevOccurrence;
     for(int i = 0; i < tourTownOrder.size(); i++){
         Leaf * node = tourTownOrder[i];
 
-
+        Connection * c;
         if(node->parentPath != nullptr && node->parentPath->parent == tourTownOrder[i - 1]){
-            Connection * c = node->parentPath;
+            c = node->parentPath;
             tourStreetOrder.push_back(make_pair(c, true));
             c->positiveNumberInEulerTour = i;
         }else if(i > 0 && tourTownOrder[i - 1]->parentPath != nullptr && tourTownOrder[i - 1]->parentPath->parent == node){
-            Connection * c = tourTownOrder[i - 1]->parentPath;
+            c = tourTownOrder[i - 1]->parentPath;
             tourStreetOrder.push_back(make_pair(c, false));
             c->negativeNumberInEulerTour = i;
         }else{
             cout<<"";
+        }
+        if(c != nullptr){
+            if(prevOccurrence.find(c->toy->toyType) != prevOccurrence.end()){
+                prevOccurrence[c->toy->toyType].first->nextOccurrenceInEuler = i;
+                c->toy->prevOccurrenceUnEuler = prevOccurrence[c->toy->toyType].second;
+            }
+            prevOccurrence[c->toy->toyType] = make_pair(c->toy, i);
         }
 
 
@@ -422,11 +438,8 @@ int main() {
         else if(request == 'B'){
             Connection * targetStreet = streets.at(stoi(args[1]) - 1);
             int newToy = stoi(args[2]) - 1;
-            if(targetStreet->toyType != newToy){
-                int oldToyType = targetStreet->toyType;
-                targetStreet->toyType = newToy;
 
-            }
+
         }
     }
 
