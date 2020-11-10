@@ -51,7 +51,7 @@ struct Range{
         this->min = min;
         this->max = max;
     }
-    static Range * commonPart(Range * r1, Range * r2){
+    static Range * commonPart(const Range * r1, const Range * r2){
         int min = r1->min > r2->min ? r1->min : r2->min;
         int max = r1->max < r2->max ? r1->max : r2->max;
         return new Range(min, max);
@@ -142,6 +142,7 @@ void eulerTourIndexing(Leaf * node, int &index, vector<pair<Connection *, bool>>
     node->eulerTourID = index;
     node->levelInTree = level;
     index += 1;
+    ///todo stack overflow change to iterations instead!
     if(node->parentPath != nullptr) {
         tourStreetOrder.push_back(make_pair(node->parentPath, true));
         node->parentPath->toy->positiveOccurrenceInEuler = level;
@@ -259,7 +260,7 @@ struct SegmentTree{
     BinaryNode * getParent(int binaryNodeID){
         return nodes[(binaryNodeID - 1) / 2];
     }
-    vector<BinaryNode *> rangeQuery(Range * range, int nodeID = 0){
+    vector<BinaryNode *> rangeQuery(const Range * range, int nodeID = 0){
         if(range == nullptr){
             cout<<"error";
             return vector<BinaryNode *>();
@@ -292,21 +293,26 @@ struct SegmentTree{
     }
 
     int getUniqueElementsCount(int maxRoad){
-        Range * range = new Range(0, maxRoad);
+        const Range * range = new Range(0, maxRoad);
         vector<BinaryNode *> nodes = rangeQuery(range);
         int uniqueSum = 0;
         for(int i = 0; i < nodes.size(); i ++){
             BinaryNode * n = nodes[i];
-            int smallerThan = n->range->max;
+            const int smallerThan = range->max;
             if(n->toys.size() > 0) {
                 int low = 0;
                 int high = n->toys.size() - 1;
                 int mid;
-                if(n->toys[0]->nextOccurrenceInEuler > smallerThan || n->toys[n->toys.size() - 1]->nextOccurrenceInEuler < smallerThan){
+                if(n->toys[0]->nextOccurrenceInEuler > smallerThan){
                     uniqueSum += n->toys.size();
+                }
+                else if(n->toys[n->toys.size() - 1]->nextOccurrenceInEuler <= smallerThan){
+                    uniqueSum += 0;
+                   cout<<"";
                 }
                 else {
                     while (true) {
+                        ///todo fix the binary search
                         mid = (low + high) / 2;
                         if (low == high) {
                             uniqueSum += low - n->toys.size() + 1;//change!
