@@ -54,17 +54,13 @@ struct Query{
         }
     private :
         bool compareQuery(const Query * q1, const Query * q2, const int blockSize) {
-            int q1LowBlock = q1->low / blockSize;
-            int q2LowBlock = q2->low / blockSize;
-            if (q1LowBlock != q2LowBlock) {
-                return q1LowBlock < q2LowBlock;
-            }
+            //no need to check the first as all are the same size.
             if (q1->timeStamp != q2->timeStamp) {
                 return q1->timeStamp < q2->timeStamp;
             }
             int q1HighBlock = q1->high / blockSize;
             int q2HighBlock = q2->high / blockSize;
-            return q1HighBlock <= q2HighBlock;
+            return q1HighBlock < q2HighBlock;
         }
     };
 };
@@ -275,10 +271,11 @@ int main() {
         }
     }
     sortQueries(queries);
-
     Range * mos = new Range(queries[0]->low,queries[0]->high);//there is minimum 1 query
     unordered_map<Edge *, bool> usedEdges;//if false - once used, if true - twice used
     unordered_map<int, int> toyOccurrence;//first for toyType, second for frequency
+
+    int currentTimeStamp = 0;
     for(int i = 0; i < queries.size(); i ++){
         Query * query = queries[i];
         while(mos->min != query->low){
@@ -297,6 +294,8 @@ int main() {
                 mos->max --;
             }
         }
+        performUpdates(dfsOrdered, updates, currentTimeStamp, query->timeStamp);
+        currentTimeStamp = query->timeStamp;
     }
 
     for(auto n : towns){
