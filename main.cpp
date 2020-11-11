@@ -8,42 +8,6 @@
 
 using namespace std;
 struct Leaf;
-struct Toy;
-struct SparseTableMin{
-    vector<int> values;
-    vector<vector<int>*> sparseTable;
-    SparseTableMin(vector<int> values){
-        this->values = values;
-        int columns = values.size();
-        int rows = log2(values.size());
-        for(int i = 0; i < rows; i ++){
-            sparseTable.push_back(new vector<int>());
-            int segmentSize = pow(2, i);
-            for(int j = 0; j < columns - segmentSize + 1; j ++){
-                if(i == 0){
-                    sparseTable[0]->push_back(values[j]);
-                } else{
-                    sparseTable[i]->push_back(getMinimum(j, j + segmentSize - 1));
-                }
-            }
-        }
-    }
-    int getMinimum(int from, int to){
-        int length = to - from + 1;
-        int rowNum = (int)(log2(length)) - 1;
-        int fixSize = pow(2, rowNum);
-        vector<int> * row = sparseTable[rowNum];
-        int firstMin = row->at(from);
-        int secondMin = row->at(to - fixSize + 1);
-        int min = firstMin > secondMin ? secondMin : firstMin;
-        return min;
-    }
-    ~SparseTableMin(){
-        for(auto v : sparseTable){
-            delete v;
-        }
-    }
-};
 struct Range{
     int min;
     int max;
@@ -57,18 +21,42 @@ struct Range{
         return new Range(min, max);
     }
 };
-struct Connection{
+struct Update{
+    const int timeStamp;//unique num for each update. id of it.
+
+    const int lowIndexUpdated;
+
+    const int highIndexUpdated;
+
+    const int prevValue; // the same value for both of indexes
+
+    const int nextValue; // the same value for both of indexes
+    Update(int timeStamp, int lowIndexUpdated, int highIndexUpdated, int prevVal, int nextValue) :
+    timeStamp(timeStamp), lowIndexUpdated(lowIndexUpdated), highIndexUpdated(highIndexUpdated), prevValue(prevVal), nextValue(nextValue){}
+};
+struct Query{
+    const int low;
+    const int high;
+    const int timeStamp;
+    Query(int low, int high, int timeStamp) : low(low), high(high), timeStamp(timeStamp){}
+};
+struct Edge{
     Leaf * l1;
     Leaf * l2;
-    Toy * toy;
     int ID;
     Leaf * parent;
     Leaf * child;
-    Connection(Leaf * l1, Leaf * l2, int streetID, Toy * toy){
+
+
+    int lDFS;
+    int hDFS;
+
+    int toyType;
+    Edge(Leaf * l1, Leaf * l2, int streetID, int toyType){
         this->l1 = l1;
         this->l2 = l2;
         this->ID = streetID;
-        this->toy = toy;
+        this->toyType = toyType;
     }
     void setParent(Leaf * parent){//if true - the l1 else the l2
         if(l1 == parent || l2 == parent) {
@@ -78,229 +66,19 @@ struct Connection{
         else
             cout<<"ERROR";
     }
-    ~Connection(){
-        delete toy;
-    }
 };
 struct Leaf{
-    Connection * parentPath;
-    vector<Connection *> connections;
+    Edge * parentPath;
+    vector<Edge *> edges;
     int id;
     int levelInTree;
-    int eulerTourID;
 
 
-    int subTreeSize = 0;
-
-    void setParentPath(Connection * parentPath){
+    void setParentPath(Edge * parentPath){
         this->parentPath = parentPath;
     }
 };
-struct Toy{
-    int toyType;
-    int nextOccurrenceInEuler = 2147483645;
-    int prevOccurrenceInEuler = -1; //isnt very needed and could be done without it but it doesnt matter and doesnt have to be updated.
 
-    int positiveOccurrenceInEuler;
-    int negativeOccurrenceInEuler;
-    Toy(int toyType){
-        this->toyType = toyType;
-    }
-};
-vector<Toy *> merge(const vector<Toy *> &v1, const vector<Toy *> &v2){
-    int i = 0, j = 0, k = 0;
-    bool iOverload = false, jOverload = false;
-
-    vector<Toy *> merged;
-    if(v1.empty()){merged = v2; return merged;}
-    if(v2.empty()){merged = v1; return merged;}
-    while(k != (v1.size() + v2.size())){
-        int firstValue = 2147483647;
-        int secondValue = 2147483647;
-        if(i >= v1.size())
-            iOverload = true;
-        if(j >= v2.size())
-            jOverload = true;
-
-        if(!iOverload)
-            firstValue = v1[i]->nextOccurrenceInEuler;
-        if(!jOverload)
-            secondValue = v2[j]->nextOccurrenceInEuler;
-
-        if(firstValue < secondValue){
-            merged.push_back(v1[i]);
-            i++;
-        }else{
-            merged.push_back(v2[j]);
-            j++;
-        }
-        k++;
-    }
-    return merged;
-}
-void eulerTourIndexing(Leaf * node, int &index, vector<pair<Connection *, bool>> &tourStreetOrder, int level = 0){
-    node->eulerTourID = index;
-    node->levelInTree = level;
-    index += 1;
-    ///todo stack overflow change to iterations instead!
-    if(node->parentPath != nullptr) {
-        tourStreetOrder.push_back(make_pair(node->parentPath, true));
-        node->parentPath->toy->positiveOccurrenceInEuler = level;
-    }
-    for(int i = 0; i < node->connections.size(); i ++){
-        if(node->connections.at(i) != node->parentPath){
-            Connection * c = node->connections.at(i);
-            eulerTourIndexing(c->child, index, tourStreetOrder, ++level);
-        }
-    }
-    if(node->parentPath != nullptr) {
-        tourStreetOrder.push_back(make_pair(node->parentPath, false));
-        node->parentPath->toy->negativeOccurrenceInEuler = level;
-    }
-
-}
-
-struct SegmentTree{
-    struct BinaryNode{
-        int id;
-        Range * range;
-
-        unordered_set<Toy *> negativeSet;//first stand for toyType second for quantity. The important thing is that it is not negative in map!
-
-        vector<Toy *> toys; //sorted by the elements next occurrence
-
-        BinaryNode(int id, Range * r){
-            this->id = id;
-            this->range = r;
-        }
-        ~BinaryNode(){
-            delete range;
-        }
-    };
-    vector< BinaryNode * > nodes;
-    vector<pair<Connection *, bool>> eulerTour;
-
-    int firstFloorSize;
-    int height;
-    SegmentTree(vector<pair<Connection *, bool>> eulerTour){
-        this->eulerTour = eulerTour;//if not enough space jus add &
-        float logVal = log2(eulerTour.size());
-        this->firstFloorSize = pow(2, (int)logVal + (bool)((int)logVal != logVal));
-        this->height = log2(firstFloorSize) + 1;
-        this->eulerTour = eulerTour;
-        buildTree();
-        preprocess();
-        cout<<"";
-    }
-
-    void buildTree(){
-        int nodesCount = pow(2, height) - 1;
-        for(int i = 0; i < nodesCount; i ++){
-            nodes.push_back(new BinaryNode(i, new Range(0,0)));
-        }
-        for(int i = 0 ; i < firstFloorSize; i ++){
-            BinaryNode * n = nodes[i +  pow(2, height - 1) - 1];
-            n->range->min = i;
-            n->range->max = i;
-        }
-        for(int i = nodesCount - 1 - firstFloorSize; i >= 0; i --){
-            BinaryNode * n = nodes[i];
-            n->range->min = getChild(i, true)->range->min;
-            n->range->max = getChild(i, false)->range->max;
-        }
-        for(int i = 0 ; i < firstFloorSize; i ++){
-            BinaryNode * n = nodes[i +  pow(2, height - 1) - 1];
-            n->range->min = i;
-            n->range->max = i;
-        }
-        for(int i = nodesCount - 1 - firstFloorSize; i >= 0; i --){
-            BinaryNode * n = nodes[i];
-            n->range->min = getChild(i, true)->range->min;
-            n->range->max = getChild(i, false)->range->max;
-        }
-    }
-    void preprocess(){
-        for(int i = 0; i < eulerTour.size(); i++){
-            int nodeID = i + pow(2, height - 1) - 1;
-            BinaryNode * n = nodes[nodeID];
-            Connection * correspondingStreet = eulerTour[i].first;
-            Toy * toy = correspondingStreet->toy;
-            bool positive = eulerTour[i].second;
-            if(positive){
-                n->toys.push_back(toy);
-            }else{
-                n->negativeSet.insert(toy);
-            }
-        }
-        for(int i = 0; i < nodes.size() - firstFloorSize; i ++){
-            int nodeID = nodes.size() - firstFloorSize - 1 - i;
-            BinaryNode * n = nodes[nodeID];
-            BinaryNode * leftChild = getChild(nodeID, true);
-            BinaryNode * rightChild = getChild(nodeID, false);
-            n->negativeSet.insert(leftChild->negativeSet.begin(), leftChild->negativeSet.end());
-            n->negativeSet.insert(rightChild->negativeSet.begin(), rightChild->negativeSet.end());
-            vector<Toy *> unDeletedToys = merge(leftChild->toys, rightChild->toys);
-
-            vector<Toy *> finalToys;
-            for(int i = 0 ; i < unDeletedToys.size(); i ++){
-                Toy * t = unDeletedToys[i];
-                if(n->negativeSet.find(t) == n->negativeSet.end()){
-                    finalToys.push_back(t);
-                }else{
-                    n->negativeSet.erase(t);
-                }
-            }
-            n->toys = finalToys;
-        }
-    }
-
-    BinaryNode * getChild(int binaryNodeID, bool left){
-        return nodes[(binaryNodeID) * 2 + !left + 1];
-    }
-    BinaryNode * getParent(int binaryNodeID){
-        return nodes[(binaryNodeID - 1) / 2];
-    }
-    vector<BinaryNode *> rangeQuery(const Range * range, int nodeID = 0){
-        if(range == nullptr){
-            cout<<"error";
-            return vector<BinaryNode *>();
-        }
-        BinaryNode * parent = nodes[nodeID];
-
-        if(range->min == parent->range->min && range->max == parent->range->max){
-            return {parent};
-        }
-
-        BinaryNode * leftChild = getChild(nodeID, true);
-        BinaryNode * rightChild = getChild(nodeID, false);
-
-
-
-        Range * commonLeft = Range::commonPart(range, leftChild->range);
-        Range * commonRight = Range::commonPart(range, rightChild->range);
-        vector<BinaryNode *> result;
-        if(commonLeft->min <= commonLeft->max){
-            vector<BinaryNode *> resLeft = rangeQuery(commonLeft, leftChild->id);
-            result.insert(result.begin(), resLeft.begin(), resLeft.end());
-        }
-        if(commonRight->min <= commonRight->max){
-            vector<BinaryNode *> resRight = rangeQuery(commonRight, rightChild->id);
-            result.insert(result.begin(), resRight.begin(), resRight.end());
-        }
-        delete commonRight;
-        delete commonLeft;
-        return result;
-    }
-
-    int getUniqueElementsCount(int maxRoad){
-
-    }
-    ~SegmentTree(){
-        for(auto n : nodes){
-            delete n;
-        }
-    }
-};
 
 
 vector<string> split(string str, char divider){
@@ -317,16 +95,7 @@ vector<string> split(string str, char divider){
     return result;
 }
 
-int countSubTreeSizes(Leaf * node){
-    for(int i = 0 ; i < node->connections.size(); i ++){
-        Connection * c = node->connections.at(i);
-        if(c != node->parentPath) {
-            node->subTreeSize += countSubTreeSizes(node->connections[i]->child);
-        }
-    }
-    node->subTreeSize += 1;
-    return node->subTreeSize;
-}
+
 
 void propagateParent(Leaf * root){
     stack<Leaf *> queue;
@@ -339,14 +108,74 @@ void propagateParent(Leaf * root){
             subject->levelInTree = height;
         }
         queue.pop();
-        for(int i = 0 ; i < subject->connections.size(); i ++){
-            Connection * c = subject->connections.at(i);
+        for(int i = 0 ; i < subject->edges.size(); i ++){
+            Edge * c = subject->edges.at(i);
             if(c != subject->parentPath) {
                 Leaf * another = !(c->l1 == subject) ? c->l1 : c->l2;
                 c->setParent(subject);
                 another->setParentPath(c);
                 queue.push(another);
             }
+        }
+    }
+}
+
+vector<Edge *> dfsOrder(Leaf * root){
+    stack<pair<Leaf *, bool>> stack;
+    stack.push(make_pair(root, false));
+
+    vector<Edge *> order;
+
+    int index = 0;
+    while (!stack.empty()){
+        Leaf * node = stack.top().first;
+        bool comeBack = stack.top().second;
+        stack.pop();
+        if(!comeBack){//in case if we are the first time visiting
+            stack.push(make_pair(node, true));
+
+            if(node->parentPath != nullptr) {
+                order.push_back(node->parentPath);
+                node->parentPath->lDFS = index;
+            }
+            for(int i = 0; i < node->edges.size(); i ++){
+                Edge * e = node->edges[i];
+                if(e != node->parentPath){
+                    stack.push(make_pair(e->child, false));
+                }
+            }
+        }
+        else if(node->parentPath != nullptr){
+            order.push_back(node->parentPath);
+            node->parentPath->lDFS = index;
+        }
+        if(node->parentPath != nullptr){
+            index++;
+        }
+    }
+    return order;
+}
+
+void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates, const int currentTimeStamp, const int designatedTimeStamp){
+    //updates vector is sorted;
+    if(currentTimeStamp < designatedTimeStamp){
+        int updateToPerformNum = currentTimeStamp;
+        while(updateToPerformNum < designatedTimeStamp){
+            Update * update = updates[updateToPerformNum];
+            Edge * updatedStreet = dfsOrdered[update->lowIndexUpdated];
+            //dont have to perform for both as it is the same object
+            updatedStreet->toyType = update->nextValue;
+            updateToPerformNum ++;
+        }
+    }
+    if(currentTimeStamp > designatedTimeStamp){
+        int updateToUndoNum = currentTimeStamp - 1;
+        while (updateToUndoNum >= designatedTimeStamp){
+            Update * update = updates[updateToUndoNum];
+            Edge * updatedStreet = dfsOrdered[update->lowIndexUpdated];
+            //dont have to perform for both as it is the same object
+            updatedStreet->toyType = update->prevValue;
+            updateToUndoNum --;
         }
     }
 }
@@ -363,7 +192,7 @@ int main() {
     int kindsOfToys = stoi(args[1]);
     int requestsCount = stoi(args[2]);
     vector <Leaf * > towns;
-    vector <Connection * > streets;
+    vector <Edge * > streets;
     for(int i = 0 ; i < townsCount; i ++){
         Leaf * town = new Leaf();
         town->id = i;
@@ -374,47 +203,58 @@ int main() {
         args = split(line, ' ');
         Leaf * town1 = towns[stoi(args[0]) - 1];
         Leaf * town2 = towns[stoi(args[1]) - 1];
-        Toy * toy = new Toy( stoi(args[2]) - 1);
-        Connection * conn = new Connection(town1, town2, i, toy);
-        town1->connections.push_back(conn);
-        town2->connections.push_back(conn);
-        streets.push_back(conn);
+        int toy = stoi(args[2]) - 1;
+        Edge * edge = new Edge(town1, town2, i, toy);
+        town1->edges.push_back(edge);
+        town2->edges.push_back(edge);
+        streets.push_back(edge);
     }
 
     Leaf * rootTown = towns[0];
     rootTown->setParentPath(nullptr);
     propagateParent(rootTown);
 
-    vector<Leaf *> tourTownOrder;
-
-    int tmp = 0;
+    vector<Edge *> dfsOrdered = dfsOrder(rootTown);
 
 
 
-    cout<<"\n";
-    cout<<"\n";
+    vector<Query *> queries;
+    vector<Update *> updates;
 
-    for(int i = 0; i < requestsCount; i ++){
-        getline(cin, line);
-        args = split(line, ' ');
-        char request = args[0][0];
-        if(request == 'Z'){
-            Leaf * targetTown = towns.at(stoi(args[1]) - 1);
+    //dummy update
+    //updates.push_back(new Update(0, 0, 0, streets.at(0)->toyType, streets.at(0)->toyType));
 
-        }
-        else if(request == 'B'){
-            Connection * targetStreet = streets.at(stoi(args[1]) - 1);
-            int newToy = stoi(args[2]) - 1;
-
-
+    {
+        int timeStamp = 0;
+        for (int i = 0; i < requestsCount; i++) {
+            getline(cin, line);
+            args = split(line, ' ');
+            char request = args[0][0];
+            if (request == 'Z') {
+                Leaf * targetTown = towns.at(stoi(args[1]) - 1);
+                queries.push_back(new Query(0, targetTown->parentPath->lDFS, timeStamp));
+            } else if (request == 'B') {
+                timeStamp += 1;
+                Edge * targetStreet = streets[stoi(args[1]) - 1];
+                int newToyType = stoi(args[2]) - 1;
+                int oldToyType = targetStreet->toyType;
+                updates.push_back(new Update(timeStamp, targetStreet->lDFS, targetStreet->hDFS, oldToyType, newToyType));
+            }
         }
     }
-
-    for(Leaf * n : towns){
+    performUpdates(dfsOrdered, updates, 0, 1);
+    performUpdates(dfsOrdered, updates, 1, 0);
+    for(auto n : towns){
         delete n;
     }
-    for(Connection * c : streets){
+    for(auto c : streets){
         delete c;
+    }
+    for(auto q : queries){
+        delete q;
+    }
+    for(auto u : updates){
+        delete u;
     }
     time(&end);
     cout << "execution time = " << double(end - start);
