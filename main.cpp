@@ -293,43 +293,7 @@ struct SegmentTree{
     }
 
     int getUniqueElementsCount(int maxRoad){
-        const Range * range = new Range(0, maxRoad);
-        vector<BinaryNode *> nodes = rangeQuery(range);
-        int uniqueSum = 0;
-        for(int i = 0; i < nodes.size(); i ++){
-            BinaryNode * n = nodes[i];
-            const int smallerThan = range->max;
-            if(n->toys.size() > 0) {
-                int low = 0;
-                int high = n->toys.size() - 1;
-                int mid;
-                if(n->toys[0]->nextOccurrenceInEuler > smallerThan){
-                    uniqueSum += n->toys.size();
-                }
-                else if(n->toys[n->toys.size() - 1]->nextOccurrenceInEuler <= smallerThan){
-                    uniqueSum += 0;
-                   cout<<"";
-                }
-                else {
-                    while (true) {
-                        ///todo fix the binary search
-                        mid = (low + high) / 2;
-                        if (low == high) {
-                            uniqueSum += low - n->toys.size() + 1;//change!
-                            break;
-                        }
-                        if (n->toys[mid]->nextOccurrenceInEuler < smallerThan) {
-                            low = mid + 1;
-                        }
-                        if (n->toys[mid]->nextOccurrenceInEuler > smallerThan) {
-                            high = mid - 1;
-                        }
-                    }
-                }
-            }
-        }
-        delete range;
-        return uniqueSum;
+
     }
     ~SegmentTree(){
         for(auto n : nodes){
@@ -422,27 +386,10 @@ int main() {
     propagateParent(rootTown);
 
     vector<Leaf *> tourTownOrder;
-    vector<pair<Connection *, bool>> tourStreetOrder;
 
     int tmp = 0;
-    eulerTourIndexing(rootTown, tmp, tourStreetOrder);
-    {//assigning the next occurence of a toy in a euler tour. Omitting the negative ones.
-        unordered_map<int, pair<Toy *, int>> tmpMap;//key - toytype, <Toy itself, occurrence itself>
-        for(int  i = 0; i < tourStreetOrder.size(); i ++){
-            if(tourStreetOrder[i].second){
-                Connection * street = tourStreetOrder[i].first;
-                Toy * toy = street->toy;
-                if(tmpMap.find(toy->toyType) != tmpMap.end()){
-                    toy->prevOccurrenceInEuler = tmpMap[toy->toyType].second;
-                    tmpMap[toy->toyType].first->nextOccurrenceInEuler = i;
-                }
-                tmpMap[toy->toyType] = make_pair(toy, i);
-            }
-        }
-    }
 
 
-    SegmentTree segmentTree(tourStreetOrder);
 
     cout<<"\n";
     cout<<"\n";
@@ -462,8 +409,6 @@ int main() {
 
         }
     }
-
-    cout<<segmentTree.getUniqueElementsCount(4)<<"\n";
 
     for(Leaf * n : towns){
         delete n;
