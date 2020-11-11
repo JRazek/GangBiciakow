@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -49,10 +50,10 @@ struct Query{
             this->blockSize = blockSize;
         }
         bool operator()(const Query * q1, const Query * q2){
-            return compareQuery(q1, q1, blockSize);
+            return compareQuery(q1, q2, blockSize);
         }
     private :
-        bool compareQuery(const Query *q1, const Query *q2, const int blockSize) {
+        bool compareQuery(const Query * q1, const Query * q2, const int blockSize) {
             int q1LowBlock = q1->low / blockSize;
             int q2LowBlock = q2->low / blockSize;
             if (q1LowBlock != q2LowBlock) {
@@ -266,10 +267,37 @@ int main() {
             }
         }
     }
-    performUpdates(dfsOrdered, updates, 0, 1);
-    performUpdates(dfsOrdered, updates, 1, 0);
-
+    //performUpdates(dfsOrdered, updates, 0, 1);
+    //performUpdates(dfsOrdered, updates, 1, 0);
+    for(auto q : queries){
+        if(q == nullptr){
+            cout<<"here!";
+        }
+    }
     sortQueries(queries);
+
+    Range * mos = new Range(queries[0]->low,queries[0]->high);//there is minimum 1 query
+    unordered_map<Edge *, bool> usedEdges;//if false - once used, if true - twice used
+    unordered_map<int, int> toyOccurrence;//first for toyType, second for frequency
+    for(int i = 0; i < queries.size(); i ++){
+        Query * query = queries[i];
+        while(mos->min != query->low){
+            if(mos->min < query->low){
+                mos->min ++;
+            }
+            if(mos->min > query->low){
+                mos->min --;
+            }
+        }
+        while(mos->max != query->high){
+            if(mos->max < query->high){
+                mos->max ++;
+            }
+            if(mos->max > query->high){
+                mos->max --;
+            }
+        }
+    }
 
     for(auto n : towns){
         delete n;
