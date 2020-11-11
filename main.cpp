@@ -42,6 +42,30 @@ struct Query{
     int answer = -1;//undefined for the time until finding the answer
 
     Query(int low, int high, int timeStamp) : low(low), high(high), timeStamp(timeStamp){}
+
+    struct Comparator {
+        int blockSize;
+        Comparator(int blockSize){
+            this->blockSize = blockSize;
+        }
+        bool operator()(const Query * q1, const Query * q2){
+            return compareQuery(q1, q1, blockSize);
+        }
+    private :
+        bool compareQuery(const Query *q1, const Query *q2, const int blockSize) {
+            int q1LowBlock = q1->low / blockSize;
+            int q2LowBlock = q2->low / blockSize;
+            if (q1LowBlock != q2LowBlock) {
+                return q1LowBlock < q2LowBlock;
+            }
+            if (q1->timeStamp != q2->timeStamp) {
+                return q1->timeStamp < q2->timeStamp;
+            }
+            int q1HighBlock = q1->high / blockSize;
+            int q2HighBlock = q2->high / blockSize;
+            return q1HighBlock <= q2HighBlock;
+        }
+    };
 };
 struct Edge{
     Leaf * l1;
@@ -97,8 +121,6 @@ vector<string> split(string str, char divider){
     }
     return result;
 }
-
-
 
 void propagateParent(Leaf * root){
     stack<Leaf *> queue;
@@ -158,22 +180,8 @@ vector<Edge *> dfsOrder(Leaf * root){
     }
     return order;
 }
-bool compareQuery(Query * q1, Query * q2, const int blockSize){
-    int q1LowBlock = q1->low / blockSize;
-    int q2LowBlock = q2->low / blockSize;
-    if(q1LowBlock != q2LowBlock){
-        return q1LowBlock < q2LowBlock;
-    }
-    if(q1->timeStamp != q2->timeStamp){
-        return q1->timeStamp < q2->timeStamp;
-    }
-    int q1HighBlock = q1->high / blockSize;
-    int q2HighBlock = q2->high / blockSize;
-    return q1HighBlock <= q2HighBlock;
-
-}
-vector<Query *> sortQueries(vector<Query *> &queries){
-   // sort(queries);
+void sortQueries(vector<Query *> &queries){
+    sort(queries.begin(), queries.end(), Query::Comparator(sqrt(queries.size())));
 }
 
 void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates, const int currentTimeStamp, const int designatedTimeStamp){
@@ -240,7 +248,6 @@ int main() {
 
     vector<Query *> queries;
     vector<Update *> updates;
-
     {
         int timeStamp = 0;
         for (int i = 0; i < requestsCount; i++) {
@@ -262,7 +269,7 @@ int main() {
     performUpdates(dfsOrdered, updates, 0, 1);
     performUpdates(dfsOrdered, updates, 1, 0);
 
-    const int blockSize = sqrt(queries.size());
+    sortQueries(queries);
 
     for(auto n : towns){
         delete n;
