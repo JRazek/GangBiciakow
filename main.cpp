@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stack>
 #include <unordered_map>
-#include <unordered_set>
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <math.h>
@@ -38,6 +38,9 @@ struct Query{
     const int low;
     const int high;
     const int timeStamp;
+
+    int answer = -1;//undefined for the time until finding the answer
+
     Query(int low, int high, int timeStamp) : low(low), high(high), timeStamp(timeStamp){}
 };
 struct Edge{
@@ -155,6 +158,23 @@ vector<Edge *> dfsOrder(Leaf * root){
     }
     return order;
 }
+bool compareQuery(Query * q1, Query * q2, const int blockSize){
+    int q1LowBlock = q1->low / blockSize;
+    int q2LowBlock = q2->low / blockSize;
+    if(q1LowBlock != q2LowBlock){
+        return q1LowBlock < q2LowBlock;
+    }
+    if(q1->timeStamp != q2->timeStamp){
+        return q1->timeStamp < q2->timeStamp;
+    }
+    int q1HighBlock = q1->high / blockSize;
+    int q2HighBlock = q2->high / blockSize;
+    return q1HighBlock <= q2HighBlock;
+
+}
+vector<Query *> sortQueries(vector<Query *> &queries){
+   // sort(queries);
+}
 
 void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates, const int currentTimeStamp, const int designatedTimeStamp){
     //updates vector is sorted;
@@ -221,9 +241,6 @@ int main() {
     vector<Query *> queries;
     vector<Update *> updates;
 
-    //dummy update
-    //updates.push_back(new Update(0, 0, 0, streets.at(0)->toyType, streets.at(0)->toyType));
-
     {
         int timeStamp = 0;
         for (int i = 0; i < requestsCount; i++) {
@@ -244,6 +261,9 @@ int main() {
     }
     performUpdates(dfsOrdered, updates, 0, 1);
     performUpdates(dfsOrdered, updates, 1, 0);
+
+    const int blockSize = sqrt(queries.size());
+
     for(auto n : towns){
         delete n;
     }
