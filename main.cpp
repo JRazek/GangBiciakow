@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
+#include <deque>
 #include <map>
 #include <vector>
 #include <math.h>
@@ -271,11 +272,17 @@ int main() {
         }
     }
     sortQueries(queries);
-    Range * mos = new Range(queries[0]->low,queries[0]->high);//there is minimum 1 query
+    Range * mos = new Range(0,0);//there is minimum 1 query
     unordered_map<Edge *, bool> usedEdges;//if false - once used, if true - twice used
+
     unordered_map<int, int> toyOccurrence;//first for toyType, second for frequency
 
+    // mos is at 0,0 so adding the starting values
+    usedEdges[dfsOrdered[0]] = false;
+    toyOccurrence[dfsOrdered[0]->toyType] = 1;
+
     int currentTimeStamp = 0;
+
     for(int i = 0; i < queries.size(); i ++){
         Query * query = queries[i];
         while(mos->min != query->low){
@@ -285,12 +292,42 @@ int main() {
             if(mos->min > query->low){
                 mos->min --;
             }
+            //never in this loop.
+            cout<<"error";
         }
         while(mos->max != query->high){
             if(mos->max < query->high){
                 mos->max ++;
+                Edge * affectedEdge = dfsOrdered[mos->max];//adding to chain
+                if(usedEdges.find(affectedEdge) != usedEdges.end()){
+                    usedEdges[affectedEdge] = true;
+                    toyOccurrence[affectedEdge->toyType] --;
+                    if(toyOccurrence[affectedEdge->toyType] == 0){
+                        toyOccurrence.erase(affectedEdge->toyType);
+                    }
+                }else{
+                    usedEdges[affectedEdge] = false;
+                    if(toyOccurrence.find(affectedEdge->toyType) == toyOccurrence.end()){
+                        toyOccurrence[affectedEdge->toyType] = 0;
+                    }
+                    toyOccurrence[affectedEdge->toyType] ++;
+                }
             }
             if(mos->max > query->high){
+                Edge * affectedEdge = dfsOrdered[mos->max];//removing it from chain
+                if(usedEdges[affectedEdge] == true){
+                    usedEdges[affectedEdge] = false;
+                    if(toyOccurrence.find(affectedEdge->toyType) == toyOccurrence.end()){
+                        toyOccurrence[affectedEdge->toyType] = 0;
+                    }
+                    toyOccurrence[affectedEdge->toyType] ++;
+                }else{
+                    usedEdges.erase(affectedEdge);
+                    toyOccurrence[affectedEdge->toyType] --;
+                    if(toyOccurrence[affectedEdge->toyType] == 0){
+                        toyOccurrence.erase(affectedEdge->toyType);
+                    }
+                }
                 mos->max --;
             }
         }
