@@ -56,12 +56,12 @@ struct Query{
     private :
         bool compareQuery(const Query * q1, const Query * q2, const int blockSize) {
             //no need to check the first as all are the same size.
-            if (q1->timeStamp != q2->timeStamp) {
-                return q1->timeStamp < q2->timeStamp;
-            }
             int q1HighBlock = q1->high / blockSize;
             int q2HighBlock = q2->high / blockSize;
-            return q1HighBlock < q2HighBlock;
+            if(q1HighBlock != q2HighBlock){
+                return q1HighBlock < q2HighBlock;
+            }
+            return q1->timeStamp < q2->timeStamp;
         }
     };
 };
@@ -170,7 +170,7 @@ vector<Edge *> dfsOrder(Leaf * root){
         }
         else if(node->parentPath != nullptr){
             order.push_back(node->parentPath);
-            node->parentPath->lDFS = index;
+            node->parentPath->hDFS = index;
         }
         if(node->parentPath != nullptr){
             index++;
