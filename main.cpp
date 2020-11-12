@@ -335,6 +335,7 @@ int main() {
         }
         answers[query->id] = differentToysCount;
     }
+    delete mos;
 
     for(auto a : answers){
         cout<<a<<"\n";
