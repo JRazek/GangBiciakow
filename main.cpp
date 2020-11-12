@@ -307,7 +307,7 @@ int main() {
                 /// --------->>
                 const Edge * addedEdge = dfsOrdered[mos->max + 1];
                 //checking if now the edge is fully covered by mos
-                if(addedEdge->hDFS <= mos->max){
+                if(addedEdge->hDFS <= mos->max + 1){
                     //double occurrence of the toy - must delete
                     toysOccurrences[addedEdge->toyType] --;
                     if(toysOccurrences[addedEdge->toyType] == 0) differentToysCount --;
@@ -350,6 +350,6 @@ int main() {
         delete u;
     }
     time(&end);
-    cout << "execution time = " << double(end - start);
+    //cout << "execution time = " << double(end - start);
     return 0;
 }
