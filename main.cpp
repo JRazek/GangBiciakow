@@ -296,10 +296,7 @@ int main() {
         Query * query = queries[i];
         performUpdates(dfsOrdered, updates, toysOccurrences, mos, currentTimeStamp, query->timeStamp);
         currentTimeStamp = query->timeStamp;
-        while(mos->min < query->range->min){
-            //deletion
-            mos->min++;
-        }
+
     }
 
     for(auto a : answers){
