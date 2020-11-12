@@ -297,7 +297,7 @@ int main() {
     int answers[queries.size()];
     int currentTimeStamp = 0;
 
-    Range * mos = new Range(0,0);//there is minimum 1 query
+    Range * mos = new Range(0,0);//there is minimum 1 query/
     for(int i = 0; i < queries.size(); i ++){
         Query * query = queries[i];
         performUpdates(dfsOrdered, updates, toysOccurrences, differentToysCount,  mos, currentTimeStamp, query->timeStamp);
