@@ -40,10 +40,11 @@ struct Query{
     const int low;
     const int high;
     const int timeStamp;
+    const int id;
 
-    int answer = -1;//undefined for the time until finding the answer
+    //int answer = -1;//undefined for the time until finding the answer
 
-    Query(int low, int high, int timeStamp) : low(low), high(high), timeStamp(timeStamp){}
+    Query(int id, int low, int high, int timeStamp) : id(id), low(low), high(high), timeStamp(timeStamp){}
 
     struct Comparator {
         int blockSize;
@@ -182,7 +183,9 @@ void sortQueries(vector<Query *> &queries){
     sort(queries.begin(), queries.end(), Query::Comparator(sqrt(queries.size())));
 }
 
-void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates, const int currentTimeStamp, const int designatedTimeStamp){
+void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates, const int currentTimeStamp,
+        const int designatedTimeStamp, unordered_map<Edge *, bool> &usedEdges, unordered_map<int, int> &toyOccurrence, const Range * mosRange){
+
     //updates vector is sorted;
     if(currentTimeStamp < designatedTimeStamp){
         int updateToPerformNum = currentTimeStamp;
@@ -190,6 +193,21 @@ void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates,
             Update * update = updates[updateToPerformNum];
             Edge * updatedStreet = dfsOrdered[update->lowIndexUpdated];
             //dont have to perform for both as it is the same object
+
+            if(usedEdges.find(updatedStreet) != usedEdges.end()){
+                if(toyOccurrence.find(updatedStreet->toyType) != toyOccurrence.end()){
+                    toyOccurrence[updatedStreet->toyType] --;
+                    if(toyOccurrence[updatedStreet->toyType] == 0){
+                        toyOccurrence.erase(updatedStreet->toyType);
+                    }
+                    if(toyOccurrence.find(update->nextValue) != toyOccurrence.end()){
+                        toyOccurrence[update->nextValue] ++;
+                    }else{
+                        toyOccurrence[update->nextValue] = 1;
+                    }
+                }
+            }
+
             updatedStreet->toyType = update->nextValue;
             updateToPerformNum ++;
         }
@@ -200,6 +218,21 @@ void performUpdates(vector<Edge *> &dfsOrdered, const vector<Update *> &updates,
             Update * update = updates[updateToUndoNum];
             Edge * updatedStreet = dfsOrdered[update->lowIndexUpdated];
             //dont have to perform for both as it is the same object
+
+            if(usedEdges.find(updatedStreet) != usedEdges.end()){
+                if(toyOccurrence.find(updatedStreet->toyType) != toyOccurrence.end()){
+                    toyOccurrence[updatedStreet->toyType] --;
+                    if(toyOccurrence[updatedStreet->toyType] == 0){
+                        toyOccurrence.erase(updatedStreet->toyType);
+                    }
+                    if(toyOccurrence.find(update->prevValue) != toyOccurrence.end()){
+                        toyOccurrence[update->prevValue] ++;
+                    }else{
+                        toyOccurrence[update->prevValue] = 1;
+                    }
+                }
+            }
+
             updatedStreet->toyType = update->prevValue;
             updateToUndoNum --;
         }
@@ -248,13 +281,16 @@ int main() {
     vector<Update *> updates;
     {
         int timeStamp = 0;
+        int askQueryID = 0;
+
         for (int i = 0; i < requestsCount; i++) {
             getline(cin, line);
             args = split(line, ' ');
             char request = args[0][0];
             if (request == 'Z') {
                 Leaf * targetTown = towns.at(stoi(args[1]) - 1);
-                queries.push_back(new Query(0, targetTown->parentPath->lDFS, timeStamp));
+                queries.push_back(new Query(askQueryID, 0, targetTown->parentPath->lDFS, timeStamp));
+                askQueryID++;
             } else if (request == 'B') {
                 timeStamp += 1;
                 Edge * targetStreet = streets[stoi(args[1]) - 1];
@@ -283,8 +319,12 @@ int main() {
 
     int currentTimeStamp = 0;
 
+    int answers[queries.size()];
+
     for(int i = 0; i < queries.size(); i ++){
         Query * query = queries[i];
+        performUpdates(dfsOrdered, updates, currentTimeStamp, query->timeStamp, usedEdges, toyOccurrence, mos);
+        currentTimeStamp = query->timeStamp;
         while(mos->min != query->low){
             if(mos->min < query->low){
                 mos->min ++;
@@ -331,8 +371,11 @@ int main() {
                 mos->max --;
             }
         }
-        performUpdates(dfsOrdered, updates, currentTimeStamp, query->timeStamp);
-        currentTimeStamp = query->timeStamp;
+        answers[query->id] = toyOccurrence.size();
+    }
+
+    for(auto a : answers){
+        cout<<a<<"\n";
     }
 
     for(auto n : towns){
@@ -348,6 +391,6 @@ int main() {
         delete u;
     }
     time(&end);
-    cout << "execution time = " << double(end - start);
+   // cout << "execution time = " << double(end - start);
     return 0;
 }
