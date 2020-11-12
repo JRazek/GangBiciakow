@@ -183,14 +183,17 @@ void sortQueries(vector<Query *> &queries){
     sort(queries.begin(), queries.end(), Query::Comparator(sqrt(queries.size())));
 }
 
-void performUpdates(vector<Edge *> &dfsOrder, vector<Update *> &updates, int toysOccurrences[], Range * mosRange, int currentTimeStamp, int wantedTimeStamp){
+void performUpdates(vector<Edge *> &dfsOrder, vector<Update *> &updates, int toysOccurrences[], int &differentToysCount,
+        Range * mosRange, int currentTimeStamp, int wantedTimeStamp){
     while(currentTimeStamp < wantedTimeStamp){
         Update * update = updates[currentTimeStamp];
         Edge * updatedEdge = dfsOrder[update->lowIndexUpdated];
         if(mosRange->min <= updatedEdge->lDFS && mosRange->max >= updatedEdge->lDFS && updatedEdge->hDFS > mosRange->max){
             //only one of the occurrences are in the range of mos
             toysOccurrences[updatedEdge->toyType] -- ;
+            if(toysOccurrences[updatedEdge->toyType] == 0) differentToysCount --;//no more different toys
             toysOccurrences[update->nextValue] ++;
+            if(toysOccurrences[update->nextValue] == 1) differentToysCount ++;//new toy in a hood
         }
         update->prevValue = updatedEdge->toyType;//the prev toy type is defined so we can go back in time to the
         updatedEdge->toyType = update->nextValue;
@@ -199,13 +202,18 @@ void performUpdates(vector<Edge *> &dfsOrder, vector<Update *> &updates, int toy
     while (currentTimeStamp > wantedTimeStamp) {
         Update * update = updates[currentTimeStamp - 1];
         Edge * updatedEdge = dfsOrder[update->lowIndexUpdated];
+        if(update->prevValue == -1){
+            cout<<"ERROR! - 1 value";
+        }
         if (updatedEdge->toyType != update->nextValue) {
             cout << "ERROR";
         }
         if (mosRange->min <= updatedEdge->lDFS && mosRange->max >= updatedEdge->lDFS &&
             updatedEdge->hDFS > mosRange->max) {
-            toysOccurrences[updatedEdge->toyType]--;
-            toysOccurrences[update->prevValue]++;
+            toysOccurrences[updatedEdge->toyType] --;
+            if(toysOccurrences[updatedEdge->toyType] == 0) differentToysCount--;
+            toysOccurrences[update->prevValue] ++;
+            if(toysOccurrences[update->prevValue] == 1) differentToysCount++;
         }
         updatedEdge->toyType = update->prevValue;
         currentTimeStamp--;
@@ -272,11 +280,10 @@ int main() {
             }
         }
     }
-    for(auto q : queries){
-        if(q == nullptr){
-            cout<<"here!";
-        }
+    for(auto n : towns){
+        delete n;
     }
+
     sortQueries(queries);
 
 
@@ -284,28 +291,55 @@ int main() {
     int toysOccurrences[150000] = {0};
 
     //dummy as the mos starts already from 0,0
-    toysOccurrences[dfsOrdered[0]->toyType] = 1;
+    toysOccurrences[dfsOrdered[0]->toyType] ++;
     differentToysCount++;
 
     int answers[queries.size()];
-    //performUpdate(dfsOrdered, toysOccurrences);
     int currentTimeStamp = 0;
 
     Range * mos = new Range(0,0);//there is minimum 1 query
     for(int i = 0; i < queries.size(); i ++){
         Query * query = queries[i];
-        performUpdates(dfsOrdered, updates, toysOccurrences, mos, currentTimeStamp, query->timeStamp);
+        performUpdates(dfsOrdered, updates, toysOccurrences, differentToysCount,  mos, currentTimeStamp, query->timeStamp);
         currentTimeStamp = query->timeStamp;
-
+        while(mos->max != query->range->max){
+            if(mos->max < query->range->max){
+                /// --------->>
+                const Edge * addedEdge = dfsOrdered[mos->max + 1];
+                //checking if now the edge is fully covered by mos
+                if(addedEdge->hDFS <= mos->max){
+                    //double occurrence of the toy - must delete
+                    toysOccurrences[addedEdge->toyType] --;
+                    if(toysOccurrences[addedEdge->toyType] == 0) differentToysCount --;
+                }else{
+                    toysOccurrences[addedEdge->toyType] ++;
+                    if(toysOccurrences[addedEdge->toyType] == 1) differentToysCount ++;
+                    cout<<"";
+                }
+                mos->max ++;
+            }
+            if(mos->max > query->range->max){
+                /// -------<<
+                const Edge * removedEdge = dfsOrdered[mos->max];
+                if(removedEdge->hDFS <= mos->max){
+                    //double occurrence of the toy - must delete
+                    toysOccurrences[removedEdge->toyType] ++;
+                    if(toysOccurrences[removedEdge->toyType] == 1) differentToysCount ++;
+                }else{
+                    toysOccurrences[removedEdge->toyType] --;
+                    if(toysOccurrences[removedEdge->toyType] == 0) differentToysCount --;
+                    cout<<"";
+                }
+                mos->max --;
+            }
+        }
+        answers[query->id] = differentToysCount;
     }
 
     for(auto a : answers){
         cout<<a<<"\n";
     }
 
-    for(auto n : towns){
-        delete n;
-    }
     for(auto c : streets){
         delete c;
     }
@@ -316,6 +350,6 @@ int main() {
         delete u;
     }
     time(&end);
-   // cout << "execution time = " << double(end - start);
+    cout << "execution time = " << double(end - start);
     return 0;
 }
